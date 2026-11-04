@@ -1,0 +1,20 @@
+{
+  "provider": "Bitrefill",
+  "surface": "public CLI catalog read",
+  "observed_at": "2026-11-04T11:43:11.193022+00:00",
+  "command": "npx @bitrefill/cli --json get-product-details --product_id airtel-india",
+  "product": {
+    "id": "airtel-india",
+    "name": "Airtel India",
+    "country_code": "IN",
+    "in_stock": true,
+    "recipient_type": "phone_number"
+  },
+  "package": {
+    "package_value": "10",
+    "package_currency": "INR",
+    "payment_price": "0.11",
+    "payment_currency": "USD"
+  },
+  "limit": "Read-only catalog evidence. No authenticated backend invoice, purchase, payment or delivery occurred."
+}

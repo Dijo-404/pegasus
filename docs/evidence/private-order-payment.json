@@ -1,0 +1,16 @@
+{
+  "order_id": "zo_a3dad04e297640b5b571ba6fa1348efd",
+  "memo": "VEIL-69e4bd8115954cfbb7857d455a5d3d95",
+  "receipt": {
+    "txid": "ef7f9cf6132cbf4df41a5195e6ebbd4034b09efbd53828f35a276afa17485b10",
+    "height": 4581925,
+    "confirmations": 1,
+    "amount_zats": 100000,
+    "pool": 3
+  },
+  "explorer_url": "https://zexplorer.app/testnet/tx/ef7f9cf6132cbf4df41a5195e6ebbd4034b09efbd53828f35a276afa17485b10",
+  "api_order_created": true,
+  "early_redemption_http_status": 409,
+  "flow_interrupted": "External process termination after broadcast lost the temporary API test encryption key. Receiving-wallet detection verified independently; entitlement redemption was not completed in the original test instance.",
+  "recovered_api_flow_evidence": "private-merchant-e2e.json"
+}

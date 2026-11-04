@@ -1,0 +1,175 @@
+# Free Society Hack: Agentic Commerce track (Bitrefill)
+
+> Context for AI coding agents helping a builder at Free Society Hack, Mumbai, 4–5 Nov 2026. Build an agent that finds, buys and pays for real products (gift cards, mobile top-ups, eSIMs) through Bitrefill on its own. Purchases use real money. This file has the brief, the stack with exact field names per surface, working commands, gotchas, recipes, what to submit and how it's judged. Times are IST (UTC+5:30).
+
+Version: 2026-11-02. When the hacker chat announces a new version, re-fetch this file.
+
+## The brief
+
+- Directions (inspiration, not categories): it pays for itself (no human checkout); works while you sleep (an event, schedule or rule triggers buying); shop from chat. Crypto payments and India-relevant products are encouraged.
+- The loop: user → trigger → guarantee (budgets, approvals, receipts) → fulfillment (Bitrefill: search, buy, pay, deliver) → ending (redeemed, installed, delivered, reconciled). Bitrefill already covers fulfillment, and the Bitrefill Assistant on Telegram already turns a chat into an order. Ideas that stand out add a new trigger, guarantee, ending or user.
+- Everything is real: real products, real delivery, real money. A delivered code can't be refunded. The Bitrefill team hands out event credits for testing.
+
+## First steps
+
+Goal: the exact product and price confirmed, a spend cap in code, one unpaid invoice created on a zero-balance account. Nothing bought yet.
+
+1. **Install the CLI and confirm the catalog without an account:**
+   ```
+   npm i -g @bitrefill/cli          # 0.3.0
+   bitrefill --json search-products --query airtel --country IN --intent "hackathon demo top-up"
+   bitrefill --json get-product-details --product_id airtel-india
+   bitrefill llm-context -o BITREFILL-MCP.md
+   ```
+   - `search-products` requires `--intent "<why>"` (not in the docs; the command errors without it; the MCP tool has the same required `intent`).
+   - `get-product-details` takes `--product_id`, not `--id`. It returns `packages[{package_value:"10", package_currency:"INR", payment_price:"0.11", payment_currency:"USD"}]`, `recipient_type` (`phone_number`, `account`, `email`, `username`, `none`), `in_stock` and `payment_methods`.
+   - `buy-products` carries no price: a spend cap must price the cart from `payment_price` first.
+   - `bitrefill llm-context` works without an account and writes the MCP/CLI tool docs, including the only published copy of the full `buy-products` JSON schema. REST builders use the Docs MCP or https://docs.bitrefill.com/llms.txt instead.
+2. **Write the guardrail module**: allowed product IDs and values, max per purchase, max per day, one purchase per trigger (dedupe key), what happens above the cap (nothing is bought; a human approves). "Guardrails" is a required submission item.
+3. **Get an API key on a zero-balance account** at https://www.bitrefill.com/account/developers (API Keys tab); keep it in `.env` only. `POST /v2/invoices` with `payment_method: "lightning"` (or any crypto method) and no payment returns an unpaid invoice that expires. On a zero-balance account a bug can only create unpaid invoices.
+4. **Ask the Bitrefill team** (Max N, Ankush Mehta, Aamir Shaikh, at the venue) for event credits, and whether free test products (`test-gift-card-code` on REST, `delos-syldavia` on MCP) can be enabled on your account.
+5. **Once the guardrails pass**, switch to the credited account and make one real cheap purchase (₹50 Flipkart or ₹10 Airtel) through your own code. Record the invoice ID in README.md when it's delivered.
+
+Stop and ask the Bitrefill team when: the MCP returns 401 with your key (header format), `buy-products` rejects a `package_value` you copied, your account hits a daily cap, an order is `failed` or an invoice `blocked`, or you need a second phone number to top up. Keep building the parts that don't depend on the answer.
+
+## Surfaces
+
+| Surface | Best for | How |
+| --- | --- | --- |
+| **eCommerce MCP** `https://api.bitrefill.com/mcp` | Agents in Claude, ChatGPT, Cursor, Codex, Gemini CLI or your own MCP client | Auth: OAuth when the client supports it (authorization server `https://api.bitrefill.com/oauth/mcp`, scopes `mcp`, `cli`), or the API key as `Authorization: Bearer <key>`, or in the path `https://api.bitrefill.com/mcp/<key>` for clients without headers. Unauthenticated requests get 401. Tools: `search-products`, `get-product-details`, `buy-products`, `get-invoice-by-id`, plus help-centre tools. Signed in: every tool and balance payments. Guest (OAuth client credentials): 7 tools, must give an `email`, pays with crypto or a payment link, reads the invoice with the `invoice_access_token` returned at purchase. |
+| **Agent Skills** `npx skills add bitrefill/agents` | Adding Bitrefill to an existing agent | Claude Code / Cowork: `/plugin marketplace add bitrefill/agents` then `/plugin install bitrefill@bitrefill-skills`. Installs the skill and the MCP server. The skill confirms each purchase with the user by design; an autonomous agent calls the REST API or MCP directly with guardrails in code. |
+| **REST API v2** `https://api.bitrefill.com/v2` | Backends and event-driven apps ("works while you sleep") | `Authorization: Bearer <key>`. `GET /ping`, `GET /accounts/balance`, `GET /products/search?q=…`, `GET /products/{id}`, `POST /invoices`, `POST /invoices/{id}/pay`, `GET /invoices/{id}`, `GET /orders/{id}`. `auto_pay: true` pays a balance invoice at once. `webhook_url` on the invoice gets a POST of the full invoice at a final state. |
+| **CLI** `npm install -g @bitrefill/cli` (0.3.0) | Shell agents, scripts, cron jobs | Works without an account (returns a payment link) or `bitrefill login --email`. `--json` for machine output (results on stdout, messages on stderr). `bitrefill manifest` gives a JSON schema of every command. |
+| **x402** `https://api.bitrefill.com/x402/*` | Agents with a wallet and no Bitrefill account | `/x402/invoice/create`, `/x402/invoice/pay`, `/x402/invoice/status`, `/x402/my/orders`, `/x402/my/esims`. Small USDC fee per call, free after `POST /x402/connect` (wallet sign-in). USDC, **mainnet only**. Poll `invoice/status` until `delivery_status: all_delivered`. |
+| **Docs MCP** `https://docs.bitrefill.com/mcp` | Your coding agent while you build | Tools `list-endpoints`, `get-endpoint`, `search-endpoints`, `execute-request`, `get-server-variables`. Never give it your API key. Plain docs: https://docs.bitrefill.com/llms.txt |
+
+Payment methods: balance (event credits), bitcoin, lightning, ark, ethereum, eth_base, eth_arbitrum, solana, litecoin, dogecoin, dash, ton, and USDC/USDT on Ethereum, Base, Polygon, Arbitrum, Solana, Tron, BSC or TON (`usdc_base`, `usdt_trc20`, …). For a crypto method the invoice response gives a payment address and exact amount; send from a wallet you control (USDC on Base needs a little ETH for gas). ZEC isn't accepted (see recipe E).
+
+REST responses: every 2xx body is `{ "meta": {...}, "data": {...} }`; read `data`. `POST /invoices` and `GET /invoices/{id}` return the invoice: `data.id`, `data.status`, `data.payment.{method, status, price, currency}`, `data.orders[]` each with `id` and `status`. `GET /orders/{id}` returns `data.status` and `data.redemption_info`. `GET /products/{id}` returns `data.packages[]` with `value` and the USD price. Errors are flat: `{ "message": "...", "status": "invalid_token" }`. For any other field ask the Docs MCP (`get-endpoint` with path `/invoices`, method `POST`).
+
+## Field names differ per surface
+
+| | MCP and CLI `buy-products` | REST v2 `POST /invoices` |
+| --- | --- | --- |
+| Items | `cart_items: [{ product_id, package_value, refill_input? }]` (max 15) | `products: [{ product_id, quantity, value | package_id, phone_number? }]` (max 20) |
+| Denomination | `package_value` copied from `get-product-details` → `packages[].package_value` (`"10"`, `"1GB, 7 Days"`); price it from the same package's `payment_price`/`payment_currency`. `package_id` is deprecated here | `value` (number in the product's currency, `10` for ₹10; the docs' own examples use it for fixed packages too) or `package_id` (only if the product lists one) |
+| Phone for top-ups | `refill_input`: international format **without `+`** (`"919876543210"`) | `phone_number`: country code + number; the digits-only format is unconfirmed (ask the Bitrefill team) |
+| Payment | `payment_method` (required): `"balance"`, a crypto method, or a fiat method (needs `billing_address`) | `payment_method`, `auto_pay: true` to pay from balance now |
+| Receipt | `email` (required) | account email |
+| Delivery event | poll `get-invoice-by-id` (`invoice_id`, plus `invoice_access_token` for guests) | `webhook_url` on the invoice, or poll `GET /invoices/{id}` then `GET /orders/{id}` |
+
+Other gotchas:
+- `package_value` is case-sensitive and Jio plan names contain en dashes: copy values, never retype them. Country codes are uppercase Alpha-2 (`IN`).
+- `webhook_url` is in the Webhooks guide but missing from the OpenAPI spec the Docs MCP serves. It works.
+- The OpenAPI `servers` entry says `api-bitrefill.com`; the real host is `api.bitrefill.com`.
+- Rate limits: the MCP's `ratelimit-limit` header says 60 requests per 30 s per token (the docs say 30/min); x402 30/min and 10 invoice creations/min per IP. Cache the catalog.
+- Tool names: commerce tools are hyphenated (`buy-products`); help-centre tools use underscores (`search_help_articles`, `get_help_article`).
+- `buy-products` returns the invoice with `invoice_id` (and `invoice_access_token` for guests) and a `payment_link` for link-only methods; orders and codes arrive via `get-invoice-by-id`. A top-up with `recipient_type: phone_number` needs `refill_input`.
+- MCP auth with an API key: the 401 carries no OAuth discovery metadata for API-key clients; pass the key as a Bearer header.
+- Node's `fetch` ignores `HTTPS_PROXY`; behind a corporate or sandbox proxy, give the MCP SDK client an undici `EnvHttpProxyAgent`, or requests hang silently.
+- Invoice quotes expire within minutes: create the invoice right before paying. x402 needs an invoice under 15 minutes old.
+- x402 amount check: open issue [bitrefill/agents#11](https://github.com/bitrefill/agents/issues/11) reports that paying an MCP-created invoice's `x402_payment_url` can return a 1,000 USDC placeholder. Create x402 invoices with `/x402/invoice/create` and refuse any 402 challenge that doesn't match the invoice total.
+- Bitrefill's x402 is mainnet only; your own x402 server can be tested on Base Sepolia with the x402.org testnet facilitator.
+- MCP clients with auto-approve will run `buy-products` without asking.
+- Daily caps per account: 5 phone top-ups (2 without an account) and 15 gift cards. Teams sharing one account share the caps.
+- Free test products are hidden until Bitrefill enables them per account. Paying an MCP test product from balance debits the real balance.
+- Codes are cash: never log, print, commit or post them; mask them on screen.
+
+## Statuses and "done"
+
+Three vocabularies; don't mix them.
+
+- Invoice (`GET /invoices/{id}`, `get-invoice-by-id`): `unpaid` → `payment_detected` → `payment_confirmed` → `pending` → `complete`, or `blocked`, `denied`, `payment_error`. `complete` means the invoice is finalised, **not** that every order delivered.
+- Order (`GET /orders/{id}`): `created` → `payment_detected` → `processing` → `delivered`, or `failed`, `refunded`. `delivered` is the finish line; `redemption_info` holds `code`, `link`, `pin`, `instructions`.
+- x402: `delivery_status: all_delivered`.
+
+Webhooks: the payload is the full invoice, POSTed at `complete`, `denied` or `payment_error`, retried on failure (so duplicates arrive), with **no signature header** documented. Respond 200 fast, then re-fetch the invoice and each order with your API key before acting, and dedupe on invoice ID. A random token in the webhook path (`webhook_url: "https://…/hooks/bitrefill/<random>"`) lets you reject other callers.
+
+Cases to handle: `429` (back off, retry), expired quote (create a new invoice), `failed` order (report; retrying blindly can hit a cap), out of stock (`in_stock: false`), `blocked` (ask the Bitrefill team).
+
+## Recipes
+
+**A. Event-driven top-up worker (Lane 3 or 4, REST v2).** Trigger (webhook, cron, weather alert, merged PR) → guardrails → `POST /invoices {products:[{product_id:"airtel-india", value:10, quantity:1, phone_number:"91…"}], payment_method:"balance", auto_pay:true, webhook_url:"https://…"}` → on webhook or poll, `GET /orders/{id}` until `delivered` → notify. Dedupe on the trigger ID and reserve it in your store **before** the `POST`: a crash between the POST and your write would otherwise buy twice on replay.
+
+**B. Spend firewall in front of the MCP (Lane 1).** Two transports: the agent (Claude Desktop, Cursor) launches your proxy as a local **stdio** MCP server from its config; your proxy connects to `https://api.bitrefill.com/mcp` as a **Streamable HTTP** client. With `@modelcontextprotocol/sdk`: `new StreamableHTTPClientTransport(new URL(url), { requestInit: { headers: { Authorization: "Bearer " + process.env.BITREFILL_API_KEY } } })`. On start, `listTools()` upstream and re-expose `search-products`, `get-product-details`, `get-invoice-by-id` with their schemas unchanged; intercept `buy-products`: price each `cart_items[]` entry from `get-product-details` → `packages[].payment_price` (cache it), enforce allow-list, per-purchase and per-day caps, and above the cap return a normal tool result `{status:"needs_approval", approval_id, total_usd}` without calling upstream. Approval happens out of band (CLI or Telegram), never through an MCP tool the agent can call. Claude Desktop config: `{"mcpServers":{"bitrefill-firewall":{"command":"node","args":["/abs/path/dist/proxy.js"],"env":{"BITREFILL_API_KEY":"..."}}}}`.
+
+**C. Close the loop (Lane 2).** After `delivered`, use `redemption_info.link` or `code` in the user's own signed-in session (Playwright MCP or computer use) so nothing is copied by hand; or send the eSIM install link.
+
+**D. Shop from chat with a guarantee.** Guest MCP (OAuth client credentials) or CLI: search → details → `buy-products` with crypto → payment link → poll with `invoice_access_token`. The Bitrefill Assistant already does chat ordering; it has no budget, approval or receipt layer.
+
+**E. Lane 5, private by default (with Zcash).** Bitrefill doesn't take ZEC and has no testnet; the Privacy track is testnet only. For the hack: a **shielded testnet payment triggers and authorises** the purchase, which is paid from event credits within caps. Claiming that shielded ZEC pays for the gift card would be a faked step (it caps both "Works" and "Followed the requirements"). Zcash side: Privacy file recipe F (zkool_graphql watch-only account or CipherPay webhook, ZIP 321 memo carrying the order code, act once the payment is mined, once per txid). Bitrefill side: recipe A with `payment_method: "balance"`, `auto_pay: true`; `GET /products/{id}` gives `data.packages[]` with `value` and USD price for the cap. Real-money route (not the demo; no testnet): shielded ZEC → deshield to a `t1` address → NEAR Intents 1Click (`https://1click.chaindefuser.com/v0`, asset `nep141:zec.omft.near` → `nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near`; minimum 132,000 zats; ~8 minutes; `refundTo` must be a mainnet `t1`, `recipient` a Base account you control) → USDC lands in that Base wallet → `POST /v2/invoices` with `payment_method:"usdc_base"`, created only after the USDC arrives → pay the invoice address from the wallet (needs ETH on Base for gas) → poll to `delivered`. Request fields, statuses and refund rules: Privacy file recipe G. Deshielding, the Base transfers and the Bitrefill payment are all public; only the shielded source is private.
+
+## Lanes (optional brainstorming help)
+
+| Lane | What's new | Example ideas | Question to test your idea |
+| --- | --- | --- | --- |
+| **1. Rails and guardrails** | The guarantee | Spend firewall · onchain allowance on x402 · commerce agent gym · signed agent receipts | Does it work with an agent you didn't write? |
+| **2. Close the loop** | The ending | Auto-redeemer in the user's browser · gift on claim · eSIM install link · gift card vault | How many human steps are left between purchase and use? |
+| **3. No prompt required** | The trigger | Back-in-stock auto-buyer · contributor payouts on merged PR · monsoon mode top-ups · subscription keeper | What stops it from firing twice? |
+| **4. Home-cooked commerce** | The user | Family line keeper · pocket money payday · recharge rewards · shagun pool | Could your parents run it from your README? |
+| **5. Private by default** (with Zcash) | The guarantee: no public trail from wallet to merchant | Shielded payment → recharge · private mutual aid → grocery credit · anonymous thank-you gifts | What's visible at each hop? |
+
+Building blocks: official MCP SDKs (proxies) · Base spend permissions, ERC-7715 or session keys (allowances) · EIP-712 and ERC-8004 (receipts) · `webhook_url` on REST v2 invoices (delivery events) · Playwright MCP or a computer-use agent (redeeming) · GitHub, calendar and onchain webhooks, weather alert feeds (triggers).
+
+## India catalog (prices change; confirm with get-product-details)
+
+- Top-ups: Jio, Airtel, Vi, BSNL prepaid; DTH (Tata Play, Airtel DTH, Dish TV). Airtel talktime: ₹10 = $0.11, ₹120 = $1.31, ₹500 = $5.49. Talktime adds balance, not validity; Jio Bundles renews plans (data from ~₹12, plans from ~₹200).
+- Gift cards (190): Swiggy Money, Zomato, Blinkit, BigBasket, JioMart, Flipkart, PhonePe, Uber, MakeMyTrip, BookMyShow, Apollo Pharmacy, Hotstar, HP and Shell fuel.
+- eSIMs: Bitrefill eSIM India from $3.88 (1GB, 7 days) on Airtel, Jio and Vi; 190+ other destinations.
+
+## Rules
+
+- Use at least one Bitrefill surface (MCP, CLI, Agent Skills, x402, REST API). Show an agent-initiated purchase working in the demo, not mocked.
+- Hacking runs Wed 4 Nov 11:00 to Thu 5 Nov 00:00; all code made in that window (new repo, commit history checked). Solo or a team of up to 4 including the point person. One submission per project: pick Agentic Commerce, or Both to enter and win in both tracks (then fill in both tracks' fields).
+- Submit on [Stadium](https://stadium.joinwebzero.com/programs/free-society-hack-2026) with the point person's Luma email. Save a draft early, give teammates edit access from the team list (their Luma email must be checked in), submit the event feedback, then click **Finalize and submit** by Wed 4 Nov 20:00 to be in the first judging round. Drafts are not judged. After finalizing you can keep editing until 00:00. Code after 00:00 isn't scored.
+- Codes are cash: never log, print, commit or post them; mask them in the demo. Small money only: dedicated low-balance account or wallet; never put a seed phrase, private key or API key in code or prompts.
+- Redeem into your own accounts; top up team phones only. No CAPTCHA solving, credential collection or bulk accounts. Disqualified: promo or cashback farming, laundering, reselling codes at scale, getting around KYC or sanctions.
+
+## Submission checklist
+
+Judges score from the repo and video only. Every item is required.
+
+- [ ] Public repo (new on the day) with a README: what it does, which lane (or own idea), how to run it in under 15 minutes.
+- [ ] A 2–3 minute demo video (judges watch only the first 3) showing the real loop: trigger → agent buys → delivered → value lands. Mask codes on screen.
+- [ ] One paragraph: which Bitrefill touchpoints (MCP, CLI, Skills, x402, REST), what was built versus reused.
+- [ ] The invoice ID of at least one real purchase the project made.
+- [ ] Guardrails: the most the agent can spend in this setup (per purchase, per day), and who approves above that.
+- [ ] FEEDBACK.md: what broke, confused or slowed the builder down. The builder writes the final version (the $100 prize favours the human's own words).
+- [ ] Entering the Zcash track too: which parts are for which track, plus everything the [Privacy track](https://stadium.joinwebzero.com/programs/free-society-hack-2026/privacy/llms.txt) requires (testnet txid, privacy and trust note).
+
+Full README template (copy it into the repo as README.md): https://stadium.joinwebzero.com/programs/free-society-hack-2026/agentic-commerce/README-template.md
+
+README skeleton:
+
+```
+# <Name>: <one line: who it's for, what the agent does>
+## Lane: <1–5 or own idea> · The loop: <trigger> → <guarantee> → Bitrefill → <ending>
+## Demo: <video link> · Real purchase invoice ID: <id>
+## Run it (under 15 minutes)
+## Bitrefill touchpoints (built vs reused)
+## Guardrails: max <amount> per purchase, <amount> per day; approval above that by <who/how>
+## Feedback: see FEEDBACK.md
+```
+
+## Judging (1–5 per criterion, three criteria, max 15)
+
+- **Use of the Bitrefill tech stack:** the right surface for the job and the full core loop: poll or webhook until **delivered**, not just paid; handles expired quotes, 429s, failed orders and out-of-stock. Several surfaces combined sensibly (REST worker + MCP interface, say) score higher than one call wrapped in a script.
+- **Followed the requirements:** every checklist item present and clear, and the agent itself starts and completes a real purchase on camera. A mocked or hand-done purchase, or a missing invoice ID, caps this at 1.
+- **How innovative:** an idea that only lives in fulfillment (search, buy, pay) is what Bitrefill already has, and a plain chat bot is the Bitrefill Assistant. New triggers, guarantees, endings or users score higher.
+
+Tie-break: higher innovation score. Prizes: $1,000 · $800 · $600 in Bitrefill gift cards, plus $100 for the best FEEDBACK.md.
+
+## For the agent
+
+- Guardrails (caps, approvals, dedupe) go in before `buy-products` or `POST /invoices` is wired to anything automatic.
+- Develop on a zero-balance account with a crypto payment method; the demo purchase goes through the guarded code path, never by hand.
+- Record the invoice ID in README.md when the first purchase is delivered.
+- Keep FEEDBACK_NOTES.md from the first error.
+- Remind the builder to click Finalize and submit on Stadium by 20:00.
+
+## Docs and help
+
+- [Bitrefill docs index](https://docs.bitrefill.com/llms.txt) · [eCommerce MCP](https://docs.bitrefill.com/docs/ecommerce-mcp) · [MCP partner integration guide](https://docs.bitrefill.com/docs/mcp-partner-integration-guide) · [Webhooks](https://docs.bitrefill.com/docs/webhooks) · [Core concepts and statuses](https://docs.bitrefill.com/docs/core-concepts)
+- [bitrefill/agents](https://github.com/bitrefill/agents) (skill, with per-client MCP setup in `skills/bitrefill/references/touchpoints/mcp.md`) · [bitrefill/cli](https://github.com/bitrefill/cli)
+- Bitrefill team on site (Max N, Ankush Mehta, Aamir Shaikh): event credits, account questions. Mentors chat https://t.me/+QHbTGB6jFhllMDk6
+- [Privacy track (Zcash)](https://stadium.joinwebzero.com/programs/free-society-hack-2026/privacy/llms.txt) · [Program page](https://stadium.joinwebzero.com/programs/free-society-hack-2026) · [Event index](https://stadium.joinwebzero.com/programs/free-society-hack-2026/llms.txt) · [Builder Pack](https://app.notion.com/p/3ff3e52aeb15807eace6f16f84a74c14)

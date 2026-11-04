@@ -1,0 +1,25 @@
+[project]
+name = "veilagent"
+version = "0.1.0"
+description = "Exact-intent approval for agent commerce and a separate shielded testnet merchant"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115,<1", "uvicorn>=0.34,<1", "httpx>=0.28,<1",
+  "mcp>=1.20,<2", "jsonschema>=4.23,<5", "cryptography>=44",
+  "python-dotenv>=1", "toon-format>=1.2",
+]
+
+[dependency-groups]
+dev = ["pytest>=8", "pytest-asyncio>=0.25", "ruff>=0.11"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]

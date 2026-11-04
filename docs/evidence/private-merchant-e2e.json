@@ -1,0 +1,38 @@
+{
+  "network": "zcash-public-testnet",
+  "verified_at": "2026-11-04T11:40:39.115615+00:00",
+  "wallet": "zkool_graphql zkool-v6.36.0",
+  "lightwallet_server": "https://testnet.zec.rocks:443",
+  "order_id": "zo_a3dad04e297640b5b571ba6fa1348efd",
+  "memo": "VEIL-69e4bd8115954cfbb7857d455a5d3d95",
+  "amount_zats": 100000,
+  "recipient": "utest1dswv9aae85nfrhen3jt9jt6ppm7ch6mdgkcu0ds4sdg72ts5sqx575xlsasq9e9mrugsea2xl32w7mp50fzj29q9g6cfx97d727ufxx6d5eqlt90vyuccw4wtf0djl22eg6e00x7jfll6suv59ulgwu7s2n5ydlsmp380cjjxuzv6ryw",
+  "birth_height": 4581901,
+  "receipt": {
+    "txid": "ef7f9cf6132cbf4df41a5195e6ebbd4034b09efbd53828f35a276afa17485b10",
+    "height": 4581925,
+    "confirmations": 5,
+    "amount_zats": 100000,
+    "pool": 3
+  },
+  "explorer_url": "https://zexplorer.app/testnet/tx/ef7f9cf6132cbf4df41a5195e6ebbd4034b09efbd53828f35a276afa17485b10",
+  "recovery_disclosure": "The original dedicated test API process was terminated after the actual shielded payment broadcast. Its temporary in-memory encryption key was lost. The pending order was restored into the main local application database from the retained authoritative API-generated order ID, memo and amount plus the known merchant address. No third payment was sent. The real running HTTP API then independently verified the existing mined payment and issued/redeemed the single-use entitlement. This is a recovered flow, not an uninterrupted end-to-end run.",
+  "flow": [
+    "Actual API order created",
+    "Early redemption rejected",
+    "Actual 0.001 TAZ Ironwood payment sent",
+    "Test process interrupted",
+    "Pending order recovered",
+    "Live HTTP API verified existing payment",
+    "300-second entitlement issued",
+    "Protected resource redeemed once",
+    "Second redemption rejected"
+  ],
+  "early_redemption_http_status": 409,
+  "refresh_http_status": 200,
+  "entitlement_expires_at": 1793792739,
+  "redemption_http_status": 200,
+  "replay_http_status": 409,
+  "replay_reason": "NOT_REDEEMABLE",
+  "limits": "The trusted receiving wallet verifies shielded amount and memo; public explorer verifies existence. Bitrefill settlement is separate and was not executed."
+}

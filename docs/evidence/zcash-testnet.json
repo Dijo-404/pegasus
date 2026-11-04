@@ -1,0 +1,20 @@
+{
+  "network": "zcash-public-testnet",
+  "wallet": "zkool_graphql zkool-v6.36.0",
+  "lightwallet_server": "https://testnet.zec.rocks:443",
+  "verified_at": "2026-11-04T11:34:59.443526+00:00",
+  "verification": "Independent UFVK-only receiving database; note-level memo, amount, scope, pool and mined height checks",
+  "payer_address": "utest12xjrpcjyav3x4wn9ggq9jllf30eldum55jluhxtgs4wx78l9nuy3w93xxnf2u63dzqjylv3czdkw4f8hcsefe4mrsgsqmf8esr7rvmlna5eeu0vm87x9j5gpy23sn5t8uk7rxxrqqpu4j50zazu38ju6xvdxtxpggj7kpdcl9sexzxyk",
+  "merchant_address": "utest1dswv9aae85nfrhen3jt9jt6ppm7ch6mdgkcu0ds4sdg72ts5sqx575xlsasq9e9mrugsea2xl32w7mp50fzj29q9g6cfx97d727ufxx6d5eqlt90vyuccw4wtf0djl22eg6e00x7jfll6suv59ulgwu7s2n5ydlsmp380cjjxuzv6ryw",
+  "birth_height": 4581901,
+  "memo": "VEILAGENT-TESTNET-FIRST-PAYMENT-20261104",
+  "receipt": {
+    "txid": "d95a809359a47156c20d63eb560dabb99bdc3462d60f23e17689f73f7ffaefe5",
+    "height": 4581917,
+    "confirmations": 2,
+    "amount_zats": 100000,
+    "pool": 3
+  },
+  "explorer_url": "https://zexplorer.app/testnet/tx/d95a809359a47156c20d63eb560dabb99bdc3462d60f23e17689f73f7ffaefe5",
+  "limits": "Explorer proves transaction existence, not shielded amount or memo; receipt is trusted local wallet evidence. This payment is independent of Bitrefill settlement."
+}
