@@ -10,11 +10,11 @@ Never paste a Bitrefill API key, wallet seed or spending key into the dashboard.
 
 ## Commerce: show the boundary in under two minutes
 
-1. Use the dedicated zero-balance Bitrefill account with the manual crypto payment method configured in the backend. Confirm your own receipt email, recipient and allowed product are configured in the local allowlists.
+1. Use the dedicated zero-balance Bitrefill account with a manual crypto payment method. Configure the allowed product/country and any delivery recipient. API-key receipts go to the connected account; guest/email mode additionally requires an allowlisted receipt email.
 2. Enter a buying objective, product search and allowed country. **Search live catalog** only reads Bitrefill. Choose an actual returned product and denomination.
-3. Enter the exact recipient and receipt email, choose a supported manual payment method, and set your maximum total. The configured per-purchase and per-day caps appear above the workspace.
+3. Enter the exact recipient, choose a supported manual payment method, and set your maximum total. For API-key mode the form shows the connected-account receipt destination. Guest mode asks for the exact receipt email. The configured per-purchase and per-day caps appear above the workspace.
 4. **Prepare exact intent** fetches the current quote and runs server-side policy. A denied policy returns a reason and creates no purchase.
-5. Review the product ID, denomination, quantity, country, recipient, email, method, quote and cap. The owner clicks **Approve these exact terms**. The resulting grant is bound to the canonical intent fingerprint and expires quickly.
+5. Review the product ID, denomination, quantity, country, recipient, receipt destination, method, quote and cap. Account mode includes a one-way account reference; changing the credential or mode requires a fresh proposal and approval. The owner clicks **Approve these exact terms**. The resulting grant is bound to the canonical intent fingerprint and expires quickly.
 6. Click **Create the approved invoice** once. The gateway rechecks terms, atomically consumes the grant, reserves budget, and calls the provider. The history and execution trail show the authoritative outcome.
 7. Show **Unpaid** honestly. The provider payment page appears only when the backend verified the invoice terms. Completing checkout is a separate manual step in this MVP.
 8. **Check provider status** reconciles the invoice. Delivery appears only when every order is delivered. An invoice finalized as `complete` alone does not prove delivery. Gift-card redemption secrets are never rendered.
