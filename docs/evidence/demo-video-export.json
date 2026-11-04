@@ -1,0 +1,66 @@
+{
+  "status": "revised-export-verified",
+  "file": "docs/assets/pegasus-pitch-demo.mp4",
+  "bytes": 7744454,
+  "sha256": "c340cd79a7837d9f97270a8b8e88472f1199f2dc243975ee442c96f0428cd916",
+  "duration_seconds": 120.466667,
+  "video": {
+    "codec_name": "h264",
+    "width": 1920,
+    "height": 1080,
+    "avg_frame_rate": "30/1",
+    "duration": "120.466667",
+    "nb_frames": "3614",
+    "pix_fmt": "yuv420p"
+  },
+  "audio": {
+    "codec_name": "aac",
+    "sample_rate": "48000",
+    "channels": 2,
+    "duration": "120.466667"
+  },
+  "audio_measurement": {
+    "integrated_lufs": -14.21,
+    "true_peak_dbtp": -1.54,
+    "lra_lu": 2.5,
+    "audibly_auditioned": false
+  },
+  "full_decode": "passed; no errors",
+  "evidence_receipt": "docs/evidence/recorded-demo-checkout.json",
+  "transaction_id": "5e0179d3ca9ea1be3835a0eadb92ade8244fb4e5f25f8c647c3e74aff0e47929",
+  "disclosures": [
+    "Actual catalog and terms footage; no Bitrefill invoice or purchase created. Delivery remains unverified.",
+    "Separate fresh shielded public-testnet resource payment.",
+    "Manual disposable local payer; operator controls both demo wallets; independent watch-only receiver cannot spend.",
+    "Actual40.102-second mining wait condensed and labelled.",
+    "HTTP409 graphic identifies recorded API receipt evidence; not invented UI.",
+    "English stock synthetic narration and catalog music. Audio measured; no subjective audition claimed."
+  ],
+  "edition": 2,
+  "revision_requested_by_user": true,
+  "prior_preview_approved": true,
+  "playback_rate": 1.1,
+  "pitch_preserved": true,
+  "visual_review": "passed:21 decoded content frames and20 major-seam frames; independent proof sequence and transition review passed",
+  "transitions": {
+    "chapter_panel_wipes": 4,
+    "subtle_paper_wipes": 2,
+    "gold_edge_passes": 2,
+    "duration_seconds": "0.30\u20130.48"
+  },
+  "supersedes": {
+    "duration_seconds": 132.5,
+    "sha256": "9ceaacbb1ae371cc4ad6daad5111e4a97ca22f77da152743f0a7943ef7af6815",
+    "preserved_locally": ".local/video/revisions/v1-original/"
+  },
+  "renderer": {
+    "name": "HyperFrames",
+    "version": "0.9.12",
+    "quality": "delivery",
+    "fps": 30,
+    "frames": 3614,
+    "capture": "beginframe",
+    "browser_gpu": "hardware",
+    "render_elapsed_seconds": 56.3
+  }
+}
