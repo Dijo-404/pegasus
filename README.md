@@ -22,8 +22,14 @@
 <br/>
 
 <p align="center">
-  <img src="docs/assets/demo-light.png" alt="Pegasus dashboard showing the authority boundary, per-purchase and daily caps, and the exact-purchase review panel" width="820" />
+  <img src="docs/assets/demo-light.png" alt="Current Pegasus commerce workspace signed in as owner, showing spending caps and the guided purchase steps" width="820" />
 </p>
+
+<p align="center">
+  <img src="docs/assets/demo-private.png" alt="Current private-resource workspace showing the testnet price, guided payment steps, and an honestly absent Noir wallet extension" width="820" />
+</p>
+
+<p align="center"><sub>Captured from the running dashboard. <a href="docs/assets/demo-mobile.png">Mobile view</a>.</sub></p>
 
 > [!NOTE]
 > **Prototype v0.1.0.** Real shielded testnet payments have been verified. A credential-backed Bitrefill purchase-and-delivery run is still pending; invoice creation alone is not delivery.
@@ -42,6 +48,7 @@ Pegasus is a local commerce gateway for people and small teams using an external
 - **Provider-backed delivery status.** Current catalog prices and invoice terms are checked; delivery is reported only when every order is delivered.
 - **Independent shielded checkout.** A watch-only receiver verifies mined testnet notes and the order memo before issuing a five-minute, single-use resource entitlement.
 - **Clear authority boundaries.** Domain rules, application use cases, external adapters, and HTTP/MCP interfaces occupy separate layers.
+- **Guided workspace.** Role-aware sign-in, a visible next step, automatic payment-status checks, and restored intent/order progress after a reload.
 
 ## Why Pegasus
 
@@ -103,6 +110,16 @@ Open <http://127.0.0.1:8787>. Open the private `.env` locally and use **Sign in*
 
 Open <https://notified-accountability-requirement-taste.trycloudflare.com>. Protected actions require the existing private owner/agent credential, entered through **Sign in**. This temporary HTTPS tunnel depends on the operator's machine and wallet processes remaining online; its hostname changes when a new tunnel is created. [Deployment and verification guide](docs/deployment.md) includes service controls and the explicit live-test command.
 
+### Pitch and demo video
+
+[![Watch the Pegasus pitch and demo video](docs/assets/demo-video-poster.jpg)](docs/assets/pegasus-pitch-demo.mp4)
+
+[**Watch or download the final MP4**](docs/assets/pegasus-pitch-demo.mp4) · **2:00.5** · **1920 × 1080 · 30 fps** · **7.4 MiB**
+
+The revised HyperFrames export is complete and verified, with **1.10× playback, preserved audio pitch, and cleaner brand panel transitions**. [Export receipt](docs/evidence/demo-video-export.json) · [Production and evidence notes](docs/demo-video.md). The film shows real catalog footage and a separate shielded testnet checkout, with the manual payer step and condensed mining wait disclosed; Bitrefill delivery remains pending.
+
+The optional [local editable preview](http://localhost:3004/#project/pegasus-film) works on the operator's machine while its preview server is running.
+
 ## Usage
 
 ### Commands
@@ -115,6 +132,12 @@ Open <https://notified-accountability-requirement-taste.trycloudflare.com>. Prot
 | `uv run python scripts/zcash_testnet.py --help` | Show the explicit testnet wallet setup, faucet, send, and watch commands. |
 | `uv run python scripts/verify_testnet_deployment.py --base-url <public-https-origin>` | Explicitly send one capped testnet payment and verify the deployed private checkout; resume using the same state file. |
 | `uv run pytest -q` | Run unit, integration, security, and architecture checks. |
+
+### Dashboard flow
+
+Use **Sign in** to enter an owner or agent token; the gateway identifies its role. The Commerce rail guides product selection, exact approval, invoice creation, payment and delivery. The Private resource rail guides a separate testnet payment and single-use access. Each rail highlights the current step and offers its next action.
+
+Pending Bitrefill invoices refresh every 30 seconds; private payments refresh every 20 seconds, with a visible countdown. Checks pause while the tab is hidden and stop after a bounded window. Reloading restores the current intent and private order from their saved IDs; execution grants stay in page memory and are not recreated. Signing out clears tokens and sensitive purchase/payment details from the view.
 
 ### Examples
 
@@ -144,13 +167,16 @@ Tools: `search_products`, `product_details`, `propose_purchase`, `execute_approv
 
 ### Live payment evidence
 
-Three real shielded payments were independently verified on **Zcash public testnet on 4 November 2026**, listed in mined order. These payments belong to the separate Zcash-native merchant; they do not settle Bitrefill purchases.
+Four real shielded payments were independently verified on **Zcash public testnet on 4 November 2026**, listed in mined order. These payments belong to the separate Zcash-native merchant; they do not settle Bitrefill purchases.
 
 | Transaction hash | Amount | Pool | Mined height | Verified flow |
 | :--- | :--- | :--- | ---: | :--- |
 | [`d95a809359a47156c20d63eb560dabb99bdc3462d60f23e17689f73f7ffaefe5`](https://zexplorer.app/testnet/tx/d95a809359a47156c20d63eb560dabb99bdc3462d60f23e17689f73f7ffaefe5) | 0.001 TAZ | Ironwood | 4581917 | [Watch-only wallet verifier](docs/evidence/zcash-testnet.json). |
 | [`ef7f9cf6132cbf4df41a5195e6ebbd4034b09efbd53828f35a276afa17485b10`](https://zexplorer.app/testnet/tx/ef7f9cf6132cbf4df41a5195e6ebbd4034b09efbd53828f35a276afa17485b10) | 0.001 TAZ | Ironwood | 4581925 | [Recovered API checkout](docs/evidence/private-merchant-e2e.json); resource redeemed once, replay rejected. |
 | [`c1d1319c62a1cca8c61502e9e27be92a72168e962de8d92831a09cfb91d45c7a`](https://zexplorer.app/testnet/tx/c1d1319c62a1cca8c61502e9e27be92a72168e962de8d92831a09cfb91d45c7a) | 0.001 TAZ | Ironwood | 4582071 | [Fresh public HTTPS checkout](docs/evidence/deployed-testnet-checkout.json); redemption and replay checks survived [restart](docs/evidence/deployment-smoke.json). |
+| [`5e0179d3ca9ea1be3835a0eadb92ade8244fb4e5f25f8c647c3e74aff0e47929`](https://zexplorer.app/testnet/tx/5e0179d3ca9ea1be3835a0eadb92ade8244fb4e5f25f8c647c3e74aff0e47929) | 0.001 TAZ | Ironwood | 4582394 | [Recorded live UI checkout](docs/evidence/recorded-demo-checkout.json); manual local payer, one redemption and HTTP 409 replay rejection. |
+
+The recorded checkout used the running UI and a fresh payment with its API-created memo. Noir was not installed, so the operator sent from the disposable local payer through the loopback signing service; the same development operator controls both wallets. The independent watch-only receiver verified the mined note at one confirmation, access returned once, and replay returned HTTP 409. The approved video edit condenses and labels the **40.102-second mining wait**; it does not depict a Noir approval or a Bitrefill purchase.
 
 The public HTTPS checkout completed uninterrupted at one confirmation: the API denied unpaid access, confirmed the exact order payment through its watch-only receiver, returned the protected resource once, and rejected replay with HTTP 409. Redeemed state and replay rejection survived an application restart.
 
@@ -362,7 +388,7 @@ Verify that the watch-only service is running on the configured loopback `/graph
 - External agents supply their own model. The broader TypeScript planner and production architecture remain future work.
 - The protected resource uses worthless public-testnet TAZ. It does not settle a Bitrefill invoice.
 - Missing authoritative invoice terms block payment links. Current provider responses must be verified before that parser is relaxed.
-- Public hosting, a demo video, target-user research, and final event submission have not been verified here.
+- Target-user research and final event submission remain unverified. Temporary deployment checks, recorded payments and the exported demo video have evidence; Bitrefill purchase/delivery verification remains pending.
 
 ## Roadmap
 
@@ -372,7 +398,7 @@ Verify that the watch-only service is running on the configured loopback `/graph
 
 ### Next 30 days and submission
 
-- Complete a credential-backed Bitrefill catalog/invoice/delivery run, record its real invoice ID here and make a 2–3 minute demo video. Neither is claimed yet.
+- Complete a credential-backed Bitrefill invoice/delivery run and record its real invoice ID here. The [demo video](docs/assets/pegasus-pitch-demo.mp4) is exported; no delivered Bitrefill purchase is claimed.
 - Validate missing invoice fields with the Bitrefill team before relaxing a fail-closed parser.
 - Run the UI with an actual target user and record their own feedback. No user demand evidence has been invented.
 - Extract the reusable memo/confirmation verifier and spend gateway after review. No upstream issue, PR or partner outreach has been created in this session.
@@ -380,7 +406,7 @@ Verify that the watch-only service is running on the configured loopback `/graph
 
 ### Original submission notes
 
-The following submission status is preserved from the original README. The repository has since been published; public hosting, video, and final submission were not verified during this documentation update.
+The following submission status is preserved from the original README as historical context. Current deployment, video and payment evidence are documented above; these older notes do not describe their present status.
 
 For this event, finalize and submit on [Stadium](https://stadium.joinwebzero.com/programs/free-society-hack-2026) by **4 November 2026, 20:00 IST** for the first judging round. Drafts are not judged; edits continue until midnight. Public repo publication, public hosting, video and final submission are still pending.
 
@@ -390,6 +416,7 @@ For this event, finalize and submit on [Stadium](https://stadium.joinwebzero.com
 | :--- | :--- |
 | [Architecture](docs/architecture.md) | Dependency rules, interfaces, and module responsibilities. |
 | [Demo guide](docs/demo-guide.md) | Commerce review, private-resource checkout, and honest demo states. |
+| [Demo video](docs/demo-video.md) | Verified MP4, editable preview, production timing, real footage and evidence limits. |
 | [Zcash testnet](docs/zcash-testnet.md) | Wallet setup, faucet, actual sends, and receiving-wallet verification. |
 | [Deployment](docs/deployment.md) | Temporary HTTPS demo, service controls, trust boundaries, and live verification. |
 | [Environment reference](.env.example) | Required credentials, optional integrations, and default limits. |
