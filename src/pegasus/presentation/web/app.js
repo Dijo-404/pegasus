@@ -113,6 +113,7 @@ function switchTab(name) {
     $(`${key}-panel`).hidden = !selected;
   }
   $('breadcrumb-current').textContent = name === 'commerce' ? 'Commerce' : 'Private resource';
+  window.pegasusVisuals?.setZone(name);
   clearNotice();
 }
 async function loadConfig() {
@@ -159,7 +160,7 @@ async function search() {
     button.type = 'button';
     const content = node('span', null, 'product-result-content');
     content.append(node('strong', product.name || id), node('small', id));
-    button.append(node('span', (product.name || id).charAt(0).toUpperCase(), 'product-initial'), content, node('span', '↗'));
+    button.append(node('span', (product.name || id).charAt(0).toUpperCase(), 'product-initial'), content, node('span', 'Select'));
     button.addEventListener('click', () => run(button, () => selectProduct(id)));
     $('search-results').append(button);
   });
@@ -332,7 +333,7 @@ async function loadHistory() {
     const status = node('td');
     status.append(tag(intent.status));
     const last = node('td');
-    const button = node('button', 'View →', 'text-button');
+    const button = node('button', 'View', 'text-button');
     button.type = 'button';
     button.addEventListener('click', () => run(button, async () => {
       if (state.intent?.id !== intent.id) state.grant = null;
@@ -362,6 +363,8 @@ function renderPrivate(order) {
   $('private-empty').hidden = true;
   $('private-order').hidden = false;
   setStatus('private-status', order.status);
+  $('shield-state').textContent = labels[order.status] || order.status;
+  window.pegasusVisuals?.setShield(order.status);
   terms('private-terms', [
     ['Network', 'Zcash testnet'], ['Amount', `${taz(order.amount_zats)} TAZ`],
     ['Receiving address', order.address], ['Encrypted order memo', order.memo],
@@ -429,7 +432,6 @@ async function redeem() {
 
 $('commerce-tab').addEventListener('click', () => switchTab('commerce'));
 $('private-tab').addEventListener('click', () => switchTab('private'));
-$('session-open').addEventListener('click', showSession);
 $('topbar-session').addEventListener('click', showSession);
 $('session-close').addEventListener('click', () => $('session-dialog').close());
 $('session-form').addEventListener('submit', (event) => {
@@ -441,7 +443,7 @@ $('session-form').addEventListener('submit', (event) => {
     $(`${name}-token`).value = '';
   }
   $('session-dialog').close();
-  $('topbar-session').textContent = 'Session settings ↗';
+  $('topbar-session').textContent = 'Session settings';
   notice('Session connected for this browser tab. Owner approval is still required for each exact purchase.', 'success');
 });
 $('clear-session').addEventListener('click', () => {
@@ -450,7 +452,7 @@ $('clear-session').addEventListener('click', () => {
   state.grant = null;
   $('owner-token').value = $('agent-token').value = '';
   $('session-dialog').close();
-  $('topbar-session').textContent = 'Connect session ↗';
+  $('topbar-session').textContent = 'Connect session';
   notice('Local session cleared.');
 });
 $('search-form').addEventListener('submit', (event) => { event.preventDefault(); run('search-button', search); });
@@ -470,4 +472,8 @@ $('create-private-order').addEventListener('click', () => run('create-private-or
 $('noir-send').addEventListener('click', () => run('noir-send', sendNoir));
 $('private-refresh').addEventListener('click', () => run('private-refresh', refreshPrivate));
 $('private-redeem').addEventListener('click', () => run('private-redeem', redeem));
+// Local time beside quote and redemption deadlines, which are shown in the same format.
+function tickClock() { $('hud-clock').textContent = new Date().toLocaleTimeString(); }
+tickClock();
+setInterval(tickClock, 1000);
 loadConfig();
