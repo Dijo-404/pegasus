@@ -4,6 +4,7 @@ It deliberately does not load .env, approve intents, or expose provider credenti
 """
 
 import os
+from typing import Literal
 
 import httpx
 from mcp.server.fastmcp import FastMCP
@@ -57,8 +58,12 @@ async def propose_purchase(
     email: str,
     payment_method: str,
     max_total_minor: int,
+    receipt_mode: Literal['email', 'provider_account'] = 'email',
+    receipt_account_reference: str | None = None,
 ) -> dict:
-    """Create an exact purchase proposal. An owner must approve it outside this agent."""
+    """Propose exact terms for separate owner approval. Account receipts require
+    an empty email and the account reference returned by product_details.
+    """
     return await call(
         "POST",
         "/api/intents",
@@ -70,6 +75,8 @@ async def propose_purchase(
             "email": email,
             "payment_method": payment_method,
             "max_total_minor": max_total_minor,
+            "receipt_mode": receipt_mode,
+            "receipt_account_reference": receipt_account_reference,
         },
     )
 

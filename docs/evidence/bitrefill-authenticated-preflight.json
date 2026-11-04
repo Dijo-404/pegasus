@@ -1,0 +1,45 @@
+{
+  "verified_at": "2026-11-04T13:05:53.431952+00:00",
+  "provider": "bitrefill",
+  "endpoint": "https://api.bitrefill.com/mcp",
+  "operation": "authenticated_read_only_preflight",
+  "purchase_attempted": false,
+  "authenticated": true,
+  "tool_count": 12,
+  "checkout_accepts_email": false,
+  "catalog": {
+    "product_id": "airtel-india",
+    "countries": [
+      "IN"
+    ],
+    "in_stock": true,
+    "receipt_mode": "provider_account",
+    "supported_manual_methods": [
+      "ark",
+      "bitcoin",
+      "dash",
+      "dogecoin",
+      "eth_arbitrum",
+      "eth_base",
+      "ethereum",
+      "lightning",
+      "litecoin",
+      "solana",
+      "ton",
+      "usdc_arbitrum",
+      "usdc_base",
+      "usdc_bsc",
+      "usdc_erc20",
+      "usdc_polygon",
+      "usdc_solana",
+      "usdt_arbitrum",
+      "usdt_bsc",
+      "usdt_erc20",
+      "usdt_polygon",
+      "usdt_solana",
+      "usdt_ton",
+      "usdt_trc20"
+    ],
+    "verified_package_count": 5
+  }
+}

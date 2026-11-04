@@ -118,7 +118,7 @@ Open <https://notified-accountability-requirement-taste.trycloudflare.com>. Prot
 
 ### Examples
 
-**Review one purchase.** Configure the local allowlists, search the catalog, choose an exact denomination, and review every term. Approve as owner, execute the grant once, and refresh the authoritative invoice state. Open a provider payment link only after the gateway verifies its terms.
+**Review one purchase.** Configure the local allowlists, search the catalog, choose an exact denomination, and review every term, including the receipt destination. An API key uses its connected Bitrefill account; guest checkout uses an allowlisted email. Approve as owner, execute the grant once, and refresh the authoritative invoice state. Open a provider payment link only after the gateway verifies its terms.
 
 **Pay for the separate private resource.** Create a testnet payment request, send the requested amount and memo from a compatible wallet, refresh until the receiving watcher confirms it, and redeem the entitlement once. See [the demo guide](docs/demo-guide.md) for the walkthrough.
 
@@ -144,13 +144,19 @@ Tools: `search_products`, `product_details`, `propose_purchase`, `execute_approv
 
 ### Live payment evidence
 
-The public HTTPS demo completed a fresh, uninterrupted checkout on **4 November 2026**: **0.001 TAZ**, Ironwood, mined at height **4582071**, verified at **one confirmation**. Transaction: [`c1d1319c62a1cca8c61502e9e27be92a72168e962de8d92831a09cfb91d45c7a`](https://zexplorer.app/testnet/tx/c1d1319c62a1cca8c61502e9e27be92a72168e962de8d92831a09cfb91d45c7a). The deployed API denied unpaid access, confirmed the exact order payment through the watch-only receiver, returned the resource once, and rejected replay with HTTP 409. Redeemed state and replay rejection survived an application restart. [Checkout receipt](docs/evidence/deployed-testnet-checkout.json) · [Deployment checks](docs/evidence/deployment-smoke.json).
+Three real shielded payments were independently verified on **Zcash public testnet on 4 November 2026**, listed in mined order. These payments belong to the separate Zcash-native merchant; they do not settle Bitrefill purchases.
 
-**Live evidence:** an independently verified shielded public-testnet payment of **0.001 TAZ**, Ironwood pool, mined at height **4581917**:
-[`d95a809359a47156c20d63eb560dabb99bdc3462d60f23e17689f73f7ffaefe5`](https://zexplorer.app/testnet/tx/d95a809359a47156c20d63eb560dabb99bdc3462d60f23e17689f73f7ffaefe5).
-The receipt from the project's own watch-only verifier is in [docs/evidence/zcash-testnet.json](docs/evidence/zcash-testnet.json). The explorer does not reveal shielded amount or memo; those facts came from the receiver's authorized wallet.
+| Transaction hash | Amount | Pool | Mined height | Verified flow |
+| :--- | :--- | :--- | ---: | :--- |
+| [`d95a809359a47156c20d63eb560dabb99bdc3462d60f23e17689f73f7ffaefe5`](https://zexplorer.app/testnet/tx/d95a809359a47156c20d63eb560dabb99bdc3462d60f23e17689f73f7ffaefe5) | 0.001 TAZ | Ironwood | 4581917 | [Watch-only wallet verifier](docs/evidence/zcash-testnet.json). |
+| [`ef7f9cf6132cbf4df41a5195e6ebbd4034b09efbd53828f35a276afa17485b10`](https://zexplorer.app/testnet/tx/ef7f9cf6132cbf4df41a5195e6ebbd4034b09efbd53828f35a276afa17485b10) | 0.001 TAZ | Ironwood | 4581925 | [Recovered API checkout](docs/evidence/private-merchant-e2e.json); resource redeemed once, replay rejected. |
+| [`c1d1319c62a1cca8c61502e9e27be92a72168e962de8d92831a09cfb91d45c7a`](https://zexplorer.app/testnet/tx/c1d1319c62a1cca8c61502e9e27be92a72168e962de8d92831a09cfb91d45c7a) | 0.001 TAZ | Ironwood | 4582071 | [Fresh public HTTPS checkout](docs/evidence/deployed-testnet-checkout.json); redemption and replay checks survived [restart](docs/evidence/deployment-smoke.json). |
 
-An earlier separate API order also received a real 0.001 TAZ transfer, verified five confirmations, released its resource, and rejected a second redemption with HTTP 409. [Earlier API evidence](docs/evidence/private-merchant-e2e.json) records that test's interruption and recovery: the original order fields were restored after a temporary test process lost its ephemeral encryption key. No payment was resent during recovery, and that earlier run is not claimed as uninterrupted.
+The public HTTPS checkout completed uninterrupted at one confirmation: the API denied unpaid access, confirmed the exact order payment through its watch-only receiver, returned the protected resource once, and rejected replay with HTTP 409. Redeemed state and replay rejection survived an application restart.
+
+The earlier recovered API checkout verified five confirmations. Its original order fields were restored after a temporary test process lost its ephemeral encryption key. No payment was resent during recovery, and that earlier run is not claimed as uninterrupted. The [original receipt](docs/evidence/private-merchant-e2e.json) preserves the interruption and recovery disclosure.
+
+Public explorers verify transaction existence, height and fees; they do not reveal shielded amounts or memos. The amounts and exact memo checks above came from the receiver's authorized watch-only wallet.
 
 ## Configuration
 
@@ -160,7 +166,8 @@ To enable commerce, set these values in `.env`, then restart the server:
 
 ```dotenv
 BITREFILL_API_KEY=<your backend-only developer key>
-ALLOWED_EMAILS=<your receipt email>
+# Required for guest/email checkout; connected-account receipts do not submit an email.
+ALLOWED_EMAILS=
 ALLOWED_RECIPIENTS=<your team phone, international digits without +>
 ALLOWED_PRODUCTS=airtel-india
 ALLOWED_COUNTRIES=IN
@@ -169,6 +176,10 @@ MAX_DAILY_MINOR=1000
 ```
 
 Use a zero-balance Bitrefill account and a manual crypto method for development. This MVP rejects balance/cashback payments and has no wallet-payment signer. Above a cap, no invoice is created; the operator must change local policy and restart before making and approving a fresh proposal. There is no agent-callable override.
+
+The provider's authenticated checkout schema determines the receipt destination. API-key purchases require explicit approval of **Connected Bitrefill account**, bound to the configured credential's one-way reference. Changing the credential or receipt mode invalidates that approval. Guest purchases keep their exact allowlisted email. The gateway never substitutes a configured email for missing provider evidence.
+
+For a no-charge provider delivery test, ask Bitrefill to enable `delos-syldavia` on the account owning the key and add `KN` to `ALLOWED_COUNTRIES`. Choose a provider-listed crypto method. Account-enabled test-only invoices confirm without payment and deliver a test code; balance payments remain disabled. [Bitrefill's test-product guide](https://docs.bitrefill.com/docs/mcp-partner-integration-guide#test-products). This provider test is separate from Zcash testnet payments.
 
 The Zcash path uses a local watch-only `zkool_graphql` account. Set `ZCASH_ENABLED=true` only when that receiver is running. See [docs/zcash-testnet.md](docs/zcash-testnet.md) for safe wallet setup, faucet, actual send and verification commands. The live wallets created during implementation stay in ignored `.local/zcash/`; these are testnet development wallets, not production custody.
 
@@ -185,7 +196,7 @@ The Zcash path uses a local watch-only `zkool_graphql` account. Set `ZCASH_ENABL
 | `BITREFILL_API_KEY` | Backend-only credential for live commerce; empty disables those calls. |
 | `MAX_PURCHASE_MINOR` / `MAX_DAILY_MINOR` | USD cent ceilings; defaults `500` / `1000`. |
 | `ALLOWED_PRODUCTS` / `ALLOWED_COUNTRIES` | Explicit product IDs and country codes. |
-| `ALLOWED_EMAILS` / `ALLOWED_RECIPIENTS` | Explicit receipt-email and delivery-recipient allowlists. |
+| `ALLOWED_EMAILS` / `ALLOWED_RECIPIENTS` | Guest receipt-email and delivery-recipient allowlists. Connected-account receipts use a bound account reference. |
 | `QUOTE_TTL_SECONDS` / `GRANT_TTL_SECONDS` | Quote and grant lifetimes; defaults `300` / `90`. |
 | `ZCASH_ENABLED` | Enable the independent merchant only after its receiver is running. |
 | `ZCASH_GRAPHQL_URL` / `ZCASH_ACCOUNT_ID` | Loopback wallet endpoint and receiving account; defaults `http://127.0.0.1:8000/graphql` / `1`. |
@@ -316,7 +327,7 @@ The dashboard was also checked with Playwright on desktop and mobile: no JavaScr
 <details>
 <summary><b>Commerce is disabled or Bitrefill is not configured</b></summary>
 
-The live adapter needs a backend credential and explicit allowlists. Set `BITREFILL_API_KEY`, `ALLOWED_EMAILS`, and any required `ALLOWED_RECIPIENTS` in `.env`, then restart the HTTP server. Obtain an account with zero balance for development. Catalog fixtures are never substituted at runtime.
+The live adapter needs a backend credential and explicit product/country allowlists. Set `BITREFILL_API_KEY` and any required `ALLOWED_RECIPIENTS` in `.env`, then restart the HTTP server. Guest/email mode also requires `ALLOWED_EMAILS`; API-key receipts go to the explicitly approved connected account. Obtain an account with zero balance for development. Catalog fixtures are never substituted at runtime.
 
 </details>
 
@@ -343,7 +354,7 @@ Verify that the watch-only service is running on the configured loopback `/graph
 
 ## Limitations
 
-**Bitrefill live purchase invoice:** not yet created. No Bitrefill developer credential was available. [Public CLI catalog reads](docs/evidence/bitrefill-catalog.json) succeeded; unit fixtures are never used by the runtime. A shielded transfer settles the separate demo resource; it does not pay Bitrefill.
+**Bitrefill live purchase invoice:** not yet created. [Authenticated MCP preflight](docs/evidence/bitrefill-authenticated-preflight.json) now verifies the configured credential, its connected-account checkout schema and a real Airtel catalog read. The account returned `product_not_found` for `delos-syldavia`; test-product enablement is pending. No purchase or delivery is claimed from catalog reads. Unit fixtures are never used by the runtime. A shielded transfer settles the separate demo resource; it does not pay Bitrefill.
 
 - The application is a single-operator local demo. Public deployment needs normal user sessions, ownership enforcement, process isolation, hardened transport, reorg handling, and retention controls.
 - External agents supply their own model. The broader TypeScript planner and production architecture remain future work.

@@ -449,3 +449,161 @@ def test_api_authority_boundaries_and_private_entitlement(setup):
         assert (
             client.post("/api/private/orders/" + order2["id"] + "/refresh", headers=owner).status_code == 409
         )
+
+
+class AccountReceiptProvider(FakeProvider):
+    """Authenticated-account fixture; no fabricated receipt email or live provider calls."""
+
+    def __init__(self):
+        super().__init__()
+        self.account_reference = "sha256:" + "a" * 64
+
+    async def details(self, product_id):
+        details = await super().details(product_id)
+        details["receipt_destination"] = {
+            "mode": "provider_account", "account_reference": self.account_reference,
+        }
+        return details
+
+    async def create_invoice(self, action):
+        await super().create_invoice(action)
+        self.terms.pop("email")
+        self.terms["receipt_destination"] = {
+            "mode": "provider_account", "account_reference": self.account_reference,
+        }
+        return await self.invoice("fixture-invoice")
+
+
+def account_request(provider, **changes):
+    return request(
+        **{
+            "email": "", "receipt_mode": "provider_account",
+            "receipt_account_reference": provider.account_reference, **changes,
+        }
+    )
+
+
+def test_connected_account_receipt_http_flow_requires_exact_owner_approval(setup):
+    settings, _, _, _ = setup
+    settings = replace(settings, allowed_emails=frozenset())
+    provider = AccountReceiptProvider()
+    app = create_app(settings, provider=provider, zcash=FakeZcash())
+    owner = {"Authorization": "Bearer " + settings.owner_token}
+    agent = {"Authorization": "Bearer " + settings.agent_token}
+    with TestClient(app) as client:
+        response = client.post("/api/intents", headers=owner, json=account_request(provider))
+        assert response.status_code == 200
+        proposal = response.json()
+        assert proposal["action"]["email"] == ""
+        assert proposal["action"]["receipt_mode"] == "provider_account"
+        assert proposal["action"]["receipt_account_reference"] == provider.account_reference
+        path = "/api/intents/" + proposal["id"]
+        approval = {"digest": proposal["digest"]}
+        assert client.post(path + "/approve", headers=agent, json=approval).status_code == 403
+        grant = client.post(path + "/approve", headers=owner, json=approval).json()["grant"]
+        result = client.post(path + "/execute", headers=owner, json={"grant": grant})
+        assert result.status_code == 200
+        assert result.json()["status"] == "UNPAID"
+        assert "email" not in provider.terms
+        assert provider.terms["receipt_destination"]["account_reference"] == provider.account_reference
+        provider.state = "complete"
+        assert client.post(path + "/refresh", headers=owner).json()["status"] == "PENDING_DELIVERY"
+        provider.orders = [{"id": "fixture-order", "status": "delivered"}]
+        assert client.post(path + "/refresh", headers=owner).json()["status"] == "DELIVERED"
+        assert client.post(path + "/execute", headers=agent, json={"grant": grant}).status_code == 409
+        assert provider.calls == 1
+
+
+@pytest.mark.parametrize(
+    "changes,status,code",
+    [
+        ({"receipt_mode": "unknown"}, 422, "INVALID_INPUT"),
+        ({"receipt_account_reference": "sha256:" + "A" * 64}, 422, "INVALID_INPUT"),
+        ({"receipt_account_reference": "sha256:short"}, 422, "INVALID_INPUT"),
+        ({"receipt_account_reference": None}, 409, "RECEIPT_ACCOUNT_MISMATCH"),
+        ({"receipt_account_reference": "sha256:" + "b" * 64}, 409, "RECEIPT_ACCOUNT_MISMATCH"),
+        ({"receipt_mode": "email"}, 409, "RECEIPT_MODE_MISMATCH"),
+        ({"email": EMAIL}, 409, "RECEIPT_EMAIL_UNEXPECTED"),
+        ({"email": "malformed"}, 422, "INVALID_INPUT"),
+    ],
+)
+def test_account_receipt_http_rejects_mixed_or_unverified_context(setup, changes, status, code):
+    settings, _, _, _ = setup
+    provider = AccountReceiptProvider()
+    app = create_app(settings, provider=provider, zcash=FakeZcash())
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/intents", headers={"Authorization": "Bearer " + settings.owner_token},
+            json=account_request(provider, **changes),
+        )
+        assert response.status_code == status
+        assert response.json()["error"]["code"] == code
+        assert provider.calls == 0
+
+
+def test_guest_http_receipt_keeps_email_required_by_policy(setup):
+    settings, _, _, provider = setup
+    app = create_app(settings, provider=provider, zcash=FakeZcash())
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/intents", headers={"Authorization": "Bearer " + settings.owner_token}, json=request(email=""),
+        )
+        assert response.status_code == 409
+        assert response.json()["error"]["code"] == "EMAIL_DENIED"
+        assert provider.calls == 0
+
+
+async def test_connected_receipt_account_change_needs_fresh_exact_approval(setup):
+    settings, store, _, _ = setup
+    provider = AccountReceiptProvider()
+    service = CommerceService(settings.commerce_policy, store, provider, HmacGrantAuthority(settings.grant_secret))
+    first = await service.propose(account_request(provider))
+    grant = service.approve(first["id"], first["digest"])["grant"]
+    provider.account_reference = "sha256:" + "b" * 64
+    with pytest.raises(Denied) as error:
+        await service.execute(first["id"], grant)
+    assert error.value.code == "RECEIPT_ACCOUNT_MISMATCH"
+    assert provider.calls == 0
+    assert store.intent(first["id"])["status"] == "AUTHORIZED"
+    second = await service.propose(account_request(provider))
+    assert second["digest"] != first["digest"]
+    with pytest.raises(Denied) as error:
+        service.approve(second["id"], first["digest"])
+    assert error.value.code == "APPROVAL_MISMATCH"
+    with pytest.raises(Denied) as error:
+        await service.execute(second["id"], grant)
+    assert error.value.code == "INTENT_MISMATCH"
+    fresh_grant = service.approve(second["id"], second["digest"])["grant"]
+    assert (await service.execute(second["id"], fresh_grant))["status"] == "UNPAID"
+    assert provider.calls == 1
+    provider.terms["receipt_destination"]["account_reference"] = "sha256:" + "c" * 64
+    result = await service.refresh(second["id"])
+    assert result["status"] == "BLOCKED"
+    assert present_intent(result, owner=True)["invoice"]["payment_link"] is None
+
+
+def test_account_receipt_http_cannot_infer_account_mode(setup):
+    settings, _, _, _ = setup
+    provider = AccountReceiptProvider()
+    app = create_app(settings, provider=provider, zcash=FakeZcash())
+    payload = account_request(provider)
+    payload.pop("receipt_mode")
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/intents", headers={"Authorization": "Bearer " + settings.owner_token}, json=payload,
+        )
+        assert response.status_code == 409
+        assert response.json()["error"]["code"] == "RECEIPT_MODE_MISMATCH"
+        assert provider.calls == 0
+
+
+async def test_guest_approval_cannot_silently_switch_to_account_receipt(setup):
+    _, store, service, guest_provider = setup
+    intent, grant = await authorized(service)
+    account_provider = AccountReceiptProvider()
+    service.provider = account_provider
+    with pytest.raises(Denied) as error:
+        await service.execute(intent["id"], grant)
+    assert error.value.code == "RECEIPT_MODE_MISMATCH"
+    assert store.intent(intent["id"])["status"] == "AUTHORIZED"
+    assert guest_provider.calls == account_provider.calls == 0

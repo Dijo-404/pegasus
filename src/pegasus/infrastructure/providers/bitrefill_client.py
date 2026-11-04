@@ -8,7 +8,9 @@ secrets, redemption codes, or provider-generated instructions leave the adapter.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
+import re
 from contextlib import asynccontextmanager
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
@@ -173,21 +175,40 @@ def _payment_link(value: Any) -> str | None:
     return value
 
 
-def _invoice_terms(data: dict) -> dict | None:
+def _receipt_context(destination: dict | None) -> dict:
+    """Validate caller-supplied adapter context, never invoice-supplied metadata."""
+    if destination is None or destination == {"mode": "email"}:
+        return {"mode": "email"}
+    if (
+        not isinstance(destination, dict)
+        or set(destination) != {"mode", "account_reference"}
+        or destination.get("mode") != "provider_account"
+        or not isinstance(destination.get("account_reference"), str)
+        or not re.fullmatch(r"sha256:[0-9a-f]{64}", destination["account_reference"])
+    ):
+        raise _bad("Receipt destination context could not be verified.")
+    return dict(destination)
+
+
+def _invoice_terms(data: dict, receipt_destination: dict | None = None) -> dict | None:
     """Extract only terms actually returned by the provider.
 
     The partner guide documents ``response.cart_items``; the call schema says
     repeated cart entries mean multiple units. A single entry without an
-    explicit quantity therefore denotes one unit. Missing receipt email,
-    payment method or denominations cannot be filled from our original request.
-    The caller must withhold the payment link when this proof is unavailable.
+    explicit quantity therefore denotes one unit. Guest receipt email, payment
+    method and denominations must come from the invoice. Connected-account
+    routing is context from authenticated schema discovery, never a claimed
+    email or account supplied by the original purchase request.
     """
+    destination = _receipt_context(receipt_destination)
     cart = data.get("cart_items")
     email = data.get("email")
     method = data.get("payment_method")
     if method is None and isinstance(data.get("payment"), dict):
         method = data["payment"].get("method")
-    if not isinstance(cart, list) or not cart or not isinstance(email, str) or not isinstance(method, str):
+    if not isinstance(cart, list) or not cart or not isinstance(method, str):
+        return None
+    if destination["mode"] == "email" and not isinstance(email, str):
         return None
     items = []
     for entry in cart:
@@ -217,10 +238,17 @@ def _invoice_terms(data: dict) -> dict | None:
                 "recipient": recipient,
             }
         )
-    return {"items": items, "email": email, "payment_method": method}
+    terms = {"items": items, "payment_method": method}
+    if destination["mode"] == "provider_account":
+        terms["receipt_destination"] = destination
+    else:
+        terms["email"] = email
+    return terms
 
 
-def normalize_invoice(raw: Any, *, expected_id: str | None = None) -> dict:
+def normalize_invoice(
+    raw: Any, *, expected_id: str | None = None, receipt_destination: dict | None = None
+) -> dict:
     data = _unwrap(raw)
     if not isinstance(data, dict):
         raise _bad()
@@ -265,7 +293,7 @@ def normalize_invoice(raw: Any, *, expected_id: str | None = None) -> dict:
         "payment_link": _payment_link(data.get("payment_link")),
         "total_minor": minor,
         "currency": currency,
-        "verified_terms": _invoice_terms(data),
+        "verified_terms": _invoice_terms(data, receipt_destination),
     }
     if data.get("invoice_access_token") is not None:
         result["invoice_access_token"] = _text(data["invoice_access_token"], maximum=4096)
@@ -275,6 +303,16 @@ def normalize_invoice(raw: Any, *, expected_id: str | None = None) -> dict:
 class BitrefillClient:
     def __init__(self, api_key: str):
         self._api_key = api_key
+
+    def _receipt_destination(self, schemas: dict[str, dict]) -> dict:
+        checkout = schemas.get("buy-products")
+        properties = checkout.get("properties") if isinstance(checkout, dict) else None
+        if not isinstance(properties, dict) or not {"cart_items", "payment_method"}.issubset(properties):
+            raise ProviderError("PROVIDER_SCHEMA", "Bitrefill's checkout authority fields are unsupported.")
+        if "email" in properties:
+            return {"mode": "email"}
+        reference = hashlib.sha256(("bitrefill:" + self._api_key).encode()).hexdigest()
+        return {"mode": "provider_account", "account_reference": "sha256:" + reference}
 
     @asynccontextmanager
     async def _session(self):
@@ -331,7 +369,7 @@ class BitrefillClient:
             ) from None
         return result
 
-    async def _call(self, name: str, args: dict | Any) -> Any:
+    async def _call(self, name: str, args: dict | Any, *, with_schema: bool = False) -> Any:
         if name not in TOOLS:
             raise ProviderError("TOOL_DENIED", "This provider tool is not allowed.")
         # One write attempt only. Read failures may retry after bounded backoff.
@@ -347,10 +385,16 @@ class BitrefillClient:
                     arguments = args(schemas[name]) if callable(args) else args
                     validated = self._args(schemas[name], arguments)
                     result = await session.call_tool(name, validated)
-                    return _decode_result(result)
+                # Decode outside the transport managers: their task groups can
+                # otherwise wrap a safe provider rejection as a network failure.
+                decoded = _decode_result(result)
+                return (decoded, schemas) if with_schema else decoded
             except ProviderError:
                 raise
             except Exception as exc:
+                safe_error = _provider_error(exc)
+                if safe_error is not None:
+                    raise safe_error from None
                 status = _http_status(exc)
                 if status in {401, 403}:
                     raise ProviderError(
@@ -404,7 +448,9 @@ class BitrefillClient:
         return result
 
     async def details(self, product_id: str) -> dict:
-        data = await self._call("get-product-details", {"product_id": product_id, "currency": "USD"})
+        data, schemas = await self._call(
+            "get-product-details", {"product_id": product_id, "currency": "USD"}, with_schema=True
+        )
         if not isinstance(data, dict):
             raise _bad()
         actual_id = data.get("product_id", data.get("id", data.get("_id")))
@@ -456,6 +502,7 @@ class BitrefillClient:
             "in_stock": data.get("in_stock") is True,
             "payment_methods": sorted(set(methods) & MANUAL_METHODS),
             "packages": normalized_packages,
+            "receipt_destination": self._receipt_destination(schemas),
         }
 
     async def create_invoice(self, action: dict) -> dict:
@@ -466,11 +513,22 @@ class BitrefillClient:
 
         def arguments(schema: dict) -> dict:
             properties = schema.get("properties", {})
-            if not {"cart_items", "payment_method", "email"}.issubset(properties):
-                # Silently omitting payment_method could select an upstream
-                # auto-debit default, so a schema change must stop the call.
+            destination = self._receipt_destination({"buy-products": schema})
+            mode = action.get("receipt_mode", "email")
+            if (
+                mode != destination["mode"]
+                or (
+                    mode == "provider_account"
+                    and (
+                        action.get("receipt_account_reference") != destination["account_reference"]
+                        or action.get("email") != ""
+                    )
+                )
+                or (mode == "email" and action.get("receipt_account_reference") not in (None, ""))
+            ):
                 raise ProviderError(
-                    "PROVIDER_SCHEMA", "Bitrefill's checkout authority fields are unsupported."
+                    "RECEIPT_DESTINATION_CHANGED",
+                    "The connected receipt destination differs from the approved purchase.",
                 )
             item_schema = properties.get("cart_items", {}).get("items", {})
             item_properties = item_schema.get("properties", {})
@@ -485,21 +543,37 @@ class BitrefillClient:
                 if "refill_input" not in item_properties:
                     raise ProviderError("PROVIDER_SCHEMA", "Bitrefill's recipient schema is unsupported.")
                 item["refill_input"] = action["recipient"]
-            return {
+            result = {
                 "cart_items": [item],
                 "payment_method": action["payment_method"],
                 "return_payment_link": True,
-                "email": action["email"],
             }
+            if mode == "email":
+                result["email"] = action["email"]
+            return result
 
-        result = await self._call("buy-products", arguments)
-        return normalize_invoice(result)
+        result, schemas = await self._call("buy-products", arguments, with_schema=True)
+        return normalize_invoice(result, receipt_destination=self._receipt_destination(schemas))
 
     async def invoice(self, invoice_id: str, access_token: str | None = None) -> dict:
         args = {"invoice_id": invoice_id}
         if access_token:
             args["invoice_access_token"] = access_token
-        return normalize_invoice(await self._call("get-invoice-by-id", args), expected_id=invoice_id)
+        result, schemas = await self._call("get-invoice-by-id", args, with_schema=True)
+        return normalize_invoice(
+            result, expected_id=invoice_id, receipt_destination=self._receipt_destination(schemas)
+        )
+
+
+def _provider_error(exc: BaseException) -> ProviderError | None:
+    """Preserve safe application errors nested by transport task groups."""
+    if isinstance(exc, ProviderError):
+        return exc
+    for nested in getattr(exc, "exceptions", ()):
+        error = _provider_error(nested)
+        if error is not None:
+            return error
+    return None
 
 
 def _http_status(exc: BaseException) -> int | None:
