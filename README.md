@@ -1,4 +1,4 @@
-# VeilAgent
+# Pegasus
 
 Policy-bound shopping for people who want an agent to prepare purchases while keeping exact approval and spending authority outside the model.
 
@@ -18,8 +18,8 @@ Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/). Node is only needed 
 
 ```sh
 uv sync --locked
-uv run python scripts/bootstrap.py
-uv run uvicorn veilagent.app:create_app --factory --host 127.0.0.1 --port 8787
+uv run python scripts/setup_environment.py
+uv run uvicorn pegasus.bootstrap:create_app --factory --host 127.0.0.1 --port 8787
 ```
 
 Open <http://127.0.0.1:8787>. Open the private `.env` locally and paste **OWNER_TOKEN** into the dashboard's session control. Bootstrap creates random credentials with mode 0600, does not print them, and never overwrites an existing `.env`.
@@ -38,7 +38,28 @@ MAX_DAILY_MINOR=1000
 
 Use a zero-balance Bitrefill account and a manual crypto method for development. This MVP rejects balance/cashback payments and has no wallet-payment signer. Above a cap, no invoice is created; the operator must change local policy and restart before making and approving a fresh proposal. There is no agent-callable override.
 
-The Zcash path uses a local watch-only `zkool_graphql` account. Set `ZCASH_ENABLED=true` only when that receiver is running. See [docs/ZCASH.md](docs/ZCASH.md) for safe wallet setup, faucet, actual send and verification commands. The live wallets created during implementation stay in ignored `.local/zcash/`; these are testnet development wallets, not production custody.
+The Zcash path uses a local watch-only `zkool_graphql` account. Set `ZCASH_ENABLED=true` only when that receiver is running. See [docs/zcash-testnet.md](docs/zcash-testnet.md) for safe wallet setup, faucet, actual send and verification commands. The live wallets created during implementation stay in ignored `.local/zcash/`; these are testnet development wallets, not production custody.
+
+## Architecture and file layout
+
+Pegasus uses four layers with dependencies pointing toward the domain. Purchase rules do not depend on FastAPI, MCP, SQLite or wallet clients. Application services receive interfaces; `pegasus.bootstrap` connects them to concrete adapters. See [the architecture guide](docs/architecture.md) for the dependency rules and module responsibilities.
+
+```text
+src/pegasus/
+├── domain/              # purchase rules, canonicalization, domain errors
+├── application/         # use cases and provider/repository interfaces
+├── infrastructure/      # settings, SQLite, signing, Bitrefill and Zcash clients
+├── presentation/
+│   ├── http/            # routes, input schemas, authentication and response views
+│   ├── mcp/             # agent-facing tools
+│   └── web/             # dashboard HTML, JavaScript and styles
+└── bootstrap.py         # application composition and HTTP app factory
+scripts/                 # local configuration and explicit testnet tooling
+tests/                   # unit, integration and architecture checks
+docs/                    # guides, specification, source briefs and real evidence
+```
+
+Python modules use `snake_case` names that describe their role, such as `commerce_service.py`, `sqlite_repository.py` and `zcash_client.py`. Guides use lowercase hyphenated names. Required project entry files remain `README.md`, `AGENTS.md` and `FEEDBACK.md`.
 
 ## Core flow
 
@@ -56,14 +77,14 @@ The independent privacy flow is **create resource order → ZIP 321 request → 
 
 The application supports an external MCP-capable coding or shopping agent. There is no embedded LLM, paid model dependency, or simulated autonomous purchase. This is the small trusted authority boundary around an agent.
 
-Start `veilagent.mcp_gateway` in a separate process with **only AGENT_TOKEN**, while the trusted HTTP gateway runs on loopback port 8787. The MCP process deliberately does not load `.env`.
+Start `pegasus.presentation.mcp.server` in a separate process with **only AGENT_TOKEN**, while the trusted HTTP gateway runs on loopback port 8787. The MCP process deliberately does not load `.env`.
 
 ```json
 {
   "mcpServers": {
-    "veilagent": {
+    "pegasus": {
       "command": "/absolute/path/to/pegasus/.venv/bin/python",
-      "args": ["/absolute/path/to/pegasus/veilagent/mcp_gateway.py"],
+      "args": ["-m", "pegasus.presentation.mcp.server"],
       "env": {"AGENT_TOKEN": "<copy only the local AGENT_TOKEN>"}
     }
   }
@@ -77,12 +98,12 @@ Tools: `search_products`, `product_details`, `propose_purchase`, `execute_approv
 ```sh
 uv run pytest -q
 uv run ruff check .
-node --check veilagent/static/app.js
+node --check src/pegasus/presentation/web/app.js
 ```
 
 Tests exercise tampered/expired/replayed grants, concurrent execution, durable daily caps, recipient and product swaps, ten injection strings, precise money arithmetic, ambiguous writes, status integrity, secret redaction, memo/pool/confirmation checks and entitlement replay. All fixtures are explicit test doubles. Real testnet evidence lives separately in `docs/evidence/`.
 
-The dashboard was also checked with Playwright on desktop and mobile: no JavaScript errors, no horizontal overflow, token entry works, and unconfigured actions remain disabled. See [docs/DEMO.md](docs/DEMO.md) for the walkthrough.
+The dashboard was also checked with Playwright on desktop and mobile: no JavaScript errors, no horizontal overflow, token entry works, and unconfigured actions remain disabled. See [docs/demo-guide.md](docs/demo-guide.md) for the walkthrough.
 
 ## Privacy and trust
 
@@ -93,9 +114,9 @@ The dashboard was also checked with Playwright on desktop and mobile: no JavaScr
 
 ## Built versus reused
 
-Lane 1 (rails and guardrails), with a separate Privacy merchant. New code implements the authority, SQLite ledger, policy, dashboard, read-only watcher and adapters. It uses the official MCP Python SDK, Bitrefill MCP, zkool2 `zkool_graphql`, optional Noir browser provider, FastAPI, httpx, jsonschema, TOON decoding and cryptography. Versions are pinned by [uv.lock](uv.lock); wallet release details are in the receipt. No code was copied from the repositories proposed in `project.md`, so their license/compatibility questions do not block this small implementation.
+Lane 1 (rails and guardrails), with a separate Privacy merchant. New code implements the authority, SQLite ledger, policy, dashboard, read-only watcher and adapters. It uses the official MCP Python SDK, Bitrefill MCP, zkool2 `zkool_graphql`, optional Noir browser provider, FastAPI, httpx, jsonschema, TOON decoding and cryptography. Versions are pinned by [uv.lock](uv.lock); wallet release details are in the receipt. No code was copied from the repositories proposed in [the project specification](docs/project-specification.md), so their license/compatibility questions do not block this small implementation.
 
-The two official llms.txt briefs are saved intact in [AGENTS.md](AGENTS.md), with separate source copies in [docs/briefs](docs/briefs). `project.md` is the original design; its broader TypeScript planner and production architecture remain future work.
+The two official llms.txt briefs are saved intact in [AGENTS.md](AGENTS.md), with separate source copies in [docs/briefs](docs/briefs). [docs/project-specification.md](docs/project-specification.md) is the original design; its broader TypeScript planner and production architecture remain future work.
 
 ## Next 30 days and submission
 
@@ -103,6 +124,6 @@ The two official llms.txt briefs are saved intact in [AGENTS.md](AGENTS.md), wit
 - Validate missing invoice fields with the Bitrefill team before relaxing a fail-closed parser.
 - Run the UI with an actual target user and record their own feedback. No user demand evidence has been invented.
 - Extract the reusable memo/confirmation verifier and spend gateway after review. No upstream issue, PR or partner outreach has been created in this session.
-- Write final [FEEDBACK.md](FEEDBACK.md) in the human builder's words. Engineering notes are in [FEEDBACK_NOTES.md](FEEDBACK_NOTES.md).
+- Write final [FEEDBACK.md](FEEDBACK.md) in the human builder's words. Engineering notes are in [integration notes](docs/integration-notes.md).
 
 For this event, finalize and submit on [Stadium](https://stadium.joinwebzero.com/programs/free-society-hack-2026) by **4 November 2026, 20:00 IST** for the first judging round. Drafts are not judged; edits continue until midnight. Public repo publication, public hosting, video and final submission are still pending.

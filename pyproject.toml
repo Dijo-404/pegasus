@@ -1,5 +1,5 @@
 [project]
-name = "veilagent"
+name = "pegasus"
 version = "0.1.0"
 description = "Exact-intent approval for agent commerce and a separate shielded testnet merchant"
 requires-python = ">=3.11"
@@ -12,10 +12,16 @@ dependencies = [
 [dependency-groups]
 dev = ["pytest>=8", "pytest-asyncio>=0.25", "ruff>=0.11"]
 
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pegasus"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
-pythonpath = ["."]
 testpaths = ["tests"]
 
 [tool.ruff]
