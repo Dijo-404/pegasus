@@ -418,6 +418,10 @@ def test_api_authority_boundaries_and_private_entitlement(setup):
         assert client.get("/health").status_code == 200
         assert client.get("/api/intents").status_code == 401
         assert settings.owner_token not in client.get("/api/config").text
+        assert client.get("/api/session").status_code == 401
+        assert client.get("/api/session", headers={"Authorization": "Bearer wrong"}).status_code == 401
+        assert client.get("/api/session", headers=owner).json() == {"role": "owner"}
+        assert client.get("/api/session", headers=agent).json() == {"role": "agent"}
         assert (
             client.get("/api/intents", headers={**owner, "Origin": "https://evil.invalid"}).status_code == 403
         )

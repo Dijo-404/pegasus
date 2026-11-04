@@ -71,7 +71,7 @@ systemd-run --user --unit=pegasus-demo-http --collect \
 
 `HTTP_ALLOWED_HOSTS` accepts explicit lowercase hostnames/IPs; wildcard, scheme and port entries fail startup validation. Uvicorn trusts forwarded headers only from the loopback tunnel connector. HTTPS origin checking requires both the preserved public Host and forwarded HTTPS scheme. Access logging is disabled, and tunnel debug logging is not enabled.
 
-Open the public URL and paste the existing private `OWNER_TOKEN` from `.env` into the dashboard's session control locally. Credentials remain required for protected APIs. Keep owner and agent credentials separate and share them only with the operator and trusted agent respectively. Public visitors can load the dashboard without receiving either credential.
+Open the public URL and use **Sign in** to paste the existing private `OWNER_TOKEN` from `.env` locally. Credentials remain required for protected APIs. Keep owner and agent credentials separate and share them only with the operator and trusted agent respectively. Public visitors can load the dashboard without receiving either credential.
 
 ## Verify one real checkout
 

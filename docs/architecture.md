@@ -23,7 +23,7 @@ The interfaces in `application/ports.py` describe the capabilities use cases nee
 
 The HTTP adapter owns routes, request schemas, authentication, middleware, error mapping and response projections. Private-order creation and fulfillment belong to `PrivateCheckoutService`; the HTTP route delegates to that service. Agent-visible response projections omit owner-only recipient details, payment links and provider access tokens.
 
-The MCP adapter is a separate process with only the agent credential. It exposes bounded shopping tools through the local HTTP gateway and has no approval tool. The web directory holds the dashboard's `index.html`, `app.js` and `styles.css`.
+The MCP adapter is a separate process with only the agent credential. It exposes bounded shopping tools through the local HTTP gateway and has no approval tool. The web directory holds the dashboard's `index.html`, `app.js`, `visuals.js`, `styles.css` and self-hosted `fonts/`. `visuals.js` draws decorative canvas scenes only; it reads the order status `app.js` already displays and never calls the API.
 
 ## Payment invariants
 
@@ -48,6 +48,7 @@ Run validation from the repository root:
 uv run pytest -q
 uv run ruff check .
 node --check src/pegasus/presentation/web/app.js
+node --check src/pegasus/presentation/web/visuals.js
 ```
 
 The broader product proposal is in [project-specification.md](project-specification.md). Current setup, limits and live evidence are in the root [README](../README.md).

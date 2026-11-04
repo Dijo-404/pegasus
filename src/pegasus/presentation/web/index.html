@@ -3,56 +3,216 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light">
-  <meta name="theme-color" content="#f5f4ef">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#e3e7ea">
   <title>Pegasus · Intent before execution</title>
+  <link rel="preload" href="/static/fonts/host-grotesk-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/departure-mono-regular.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/visuals.js" defer></script>
   <script src="/static/app.js" defer></script>
 </head>
-<body>
-  <div class="app-shell">
-    <aside class="sidebar">
-      <a class="brand" href="/" aria-label="Pegasus home"><span class="brand-mark" aria-hidden="true">P</span><span>Pegasus<small>COMMERCE WITH BOUNDARIES</small></span></a>
-      <nav class="navigation" role="tablist" aria-label="Workspace">
-        <button class="nav-item selected" id="commerce-tab" role="tab" aria-selected="true" aria-controls="commerce-panel"><span aria-hidden="true">◇</span> Commerce <span class="nav-number">01</span></button>
-        <button class="nav-item" id="private-tab" role="tab" aria-selected="false" aria-controls="private-panel"><span aria-hidden="true">◈</span> Private resource <span class="nav-number">02</span></button>
-      </nav>
-      <section class="boundary-note"><span class="eyebrow">THE AUTHORITY BOUNDARY</span><p>An agent can propose.<br><strong>You authorize the action.</strong></p><div class="boundary-line"><i></i><span>Policy → approval → execution</span></div></section>
-      <div class="sidebar-bottom"><span class="connection-dot" aria-hidden="true"></span><span>Local workspace</span><button id="session-open" class="text-button">Session settings</button></div>
-    </aside>
-    <main>
-      <header class="topbar"><span class="breadcrumb">WORKSPACE <span>/</span> <strong id="breadcrumb-current">Commerce</strong></span><div class="topbar-actions"><span class="live-label"><span class="connection-dot" aria-hidden="true"></span> LIVE INTEGRATIONS</span><button id="topbar-session" class="text-button">Connect session ↗</button></div></header>
-      <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
-      <section class="page-panel" id="commerce-panel" role="tabpanel" aria-labelledby="commerce-tab">
-        <div class="page-heading"><div><span class="eyebrow">A LITTLE AGENCY. EXACT AUTHORITY.</span><h1>Intent before execution.</h1><p>Find a product. Review the exact terms. Let the gateway enforce the limits.</p></div><span class="outline-tag">BITREFILL MCP</span></div>
-        <div class="metrics-grid" aria-label="Active policy">
-          <article class="metric"><span class="metric-label">PER PURCHASE</span><strong id="purchase-cap">—</strong><span>Enforced by the gateway</span></article>
-          <article class="metric"><span class="metric-label">PER DAY</span><strong id="daily-cap">—</strong><span>Includes reserved purchases</span></article>
-          <article class="metric"><span class="metric-label">CHECKOUT MODE</span><strong class="metric-text">Exact approval</strong><span>Single-use execution grant</span></article>
-          <article class="metric"><span class="metric-label">PROVIDER</span><strong class="metric-text" id="commerce-status">Checking…</strong><span id="commerce-status-note">Reading configuration</span></article>
+<body data-zone="commerce">
+  <header class="masthead">
+    <a class="brand" href="/" aria-label="Pegasus home"><span class="brand-mark" aria-hidden="true"></span>Pegasus</a>
+    <p class="breadcrumb">Workspace <span aria-hidden="true">/</span> <strong id="breadcrumb-current">Commerce</strong></p>
+    <p class="masthead-note">An agent can propose. You authorize the action.</p>
+  </header>
+
+  <main>
+    <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+
+    <section class="page-panel" id="commerce-panel" role="tabpanel" aria-labelledby="commerce-tab">
+      <div class="hero">
+        <canvas id="boundary-canvas" class="hero-canvas" aria-hidden="true"></canvas>
+        <p class="boundary-label" aria-hidden="true">Authority boundary</p>
+        <div class="hero-copy">
+          <h1>Intent before execution.</h1>
+          <p>Find a product. Review the exact terms. The gateway enforces the limits, and nothing executes until you approve.</p>
         </div>
-        <div class="workspace-grid">
-          <section class="card discovery-card"><div class="card-heading"><div><span class="step-label">01 / DISCOVER</span><h2>What are you looking for?</h2></div><span class="small-tag">Read-only</span></div>
-            <form id="search-form"><label for="objective">Buying objective</label><textarea id="objective" rows="2" placeholder="A small prepaid top-up for my own phone in India" required maxlength="500"></textarea><div class="form-row"><div class="grow"><label for="search-query">Search products</label><input id="search-query" type="search" placeholder="e.g. Airtel" required maxlength="100"></div><div class="country-field"><label for="country">Country</label><select id="country"><option value="IN">India · IN</option></select></div></div><button class="primary-button full-width" type="submit" id="search-button">Search live catalog <span aria-hidden="true">↗</span></button></form>
-            <div class="section-divider"></div><div class="results-heading"><span class="eyebrow">PROVIDER RESULTS</span><span class="muted" id="result-count">No search yet</span></div><div id="search-results" class="search-results"><div class="empty-state"><div class="empty-symbol" aria-hidden="true">⌕</div><h3>Start with the actual catalog.</h3><p>Results and prices come from Bitrefill. Product text cannot authorize a purchase.</p></div></div>
-          </section>
-          <section class="card review-card"><div class="card-heading"><div><span class="step-label">02 / REVIEW & AUTHORIZE</span><h2>The exact purchase.</h2></div><span class="shield-icon" aria-hidden="true">✓</span></div>
-            <div id="review-empty" class="empty-state tall"><div class="intent-graphic" aria-hidden="true"><div></div><div></div><div></div></div><h3>Nothing is authorized yet.</h3><p>Select a product to build an intent.<br>Approval applies to that exact action only.</p></div>
-            <form id="proposal-form" hidden><div class="selected-product"><span class="eyebrow">SELECTED PRODUCT</span><h3 id="product-name"></h3><code id="product-id"></code></div><div class="form-row"><div class="grow"><label for="package">Denomination</label><select id="package" required></select></div><div class="grow"><label for="payment-method">Payment method</label><select id="payment-method" required></select></div></div><label for="recipient" id="recipient-label">Recipient</label><input id="recipient" autocomplete="off" maxlength="160"><label for="email" id="email-label">Receipt email</label><input id="email" type="email" autocomplete="email" placeholder="you@example.com" required maxlength="254"><p id="account-receipt" class="field-note" hidden>Receipt goes to your connected Bitrefill account. No email address is submitted.</p><label for="intent-cap">Your maximum total (USD)</label><input id="intent-cap" type="number" min="0.01" step="0.01" required><p class="field-note">The server rechecks the current price and policy before execution.</p><button class="primary-button full-width" type="submit">Prepare exact intent <span aria-hidden="true">→</span></button></form>
-            <div id="intent-review" hidden><div class="intent-banner"><span class="eyebrow">BOUND TO YOUR APPROVAL</span><span id="intent-status" class="status-tag"></span></div><dl class="review-terms" id="intent-terms"></dl><div class="digest-row"><span>Intent fingerprint</span><code id="intent-digest"></code></div><p class="field-note" id="intent-expiry"></p><button id="approve-button" class="primary-button full-width">Approve these exact terms</button><button id="execute-button" class="primary-button full-width" hidden>Create the approved invoice</button><button id="refresh-button" class="secondary-button full-width" hidden>Check provider status</button><a id="payment-link" class="primary-button full-width" target="_blank" rel="noopener noreferrer" hidden>Open provider payment page ↗</a><p id="invoice-note" class="field-note"></p><button id="new-intent-button" class="text-button">Choose another product</button></div>
-          </section>
+        <dl class="readout" aria-label="Active policy">
+          <div><dt>Per purchase</dt><dd class="readout-value" id="purchase-cap">—</dd><dd class="readout-note">Enforced by the gateway</dd></div>
+          <div><dt>Per day</dt><dd class="readout-value" id="daily-cap">—</dd><dd class="readout-note">Includes reserved purchases</dd></div>
+          <div><dt>Checkout</dt><dd class="readout-value">Exact approval</dd><dd class="readout-note">Single-use execution grant</dd></div>
+          <div><dt>Bitrefill</dt><dd class="readout-value" id="commerce-status">Checking…</dd><dd class="readout-note" id="commerce-status-note">Reading configuration</dd></div>
+        </dl>
+      </div>
+
+      <section class="workflow" aria-label="Purchase steps">
+        <ol class="workflow-steps" id="commerce-steps">
+          <li><span class="workflow-index">1</span><span class="workflow-label">Sign in</span></li>
+          <li><span class="workflow-index">2</span><span class="workflow-label">Choose a product</span></li>
+          <li><span class="workflow-index">3</span><span class="workflow-label">Prepare intent</span></li>
+          <li><span class="workflow-index">4</span><span class="workflow-label">Approve terms</span></li>
+          <li><span class="workflow-index">5</span><span class="workflow-label">Create invoice</span></li>
+          <li><span class="workflow-index">6</span><span class="workflow-label">Pay at Bitrefill</span></li>
+          <li><span class="workflow-index">7</span><span class="workflow-label">Delivered</span></li>
+        </ol>
+        <div class="workflow-next"><p><span class="muted">Next</span> <span id="commerce-next">Checking your session…</span></p><button id="commerce-next-action" class="primary-button" type="button" hidden></button></div>
+      </section>
+
+      <div class="workspace">
+        <section class="panel discover-panel" aria-labelledby="discover-title">
+          <div class="panel-heading"><span class="step" aria-hidden="true">01</span><h2 id="discover-title">What are you looking for?</h2><span class="small-tag">Read-only</span></div>
+          <form id="search-form">
+            <label for="objective">Buying objective</label>
+            <textarea id="objective" rows="2" placeholder="A small prepaid top-up for my own phone in India" required maxlength="500"></textarea>
+            <div class="form-row">
+              <div class="grow"><label for="search-query">Product</label><input id="search-query" type="search" placeholder="Airtel" required maxlength="100"></div>
+              <div class="country-field"><label for="country">Country</label><select id="country"><option value="IN">India · IN</option></select></div>
+            </div>
+            <button class="primary-button full-width" type="submit" id="search-button">Search the live catalog</button>
+          </form>
+          <div class="results-heading"><h3>Provider results</h3><span class="muted" id="result-count">No search yet</span></div>
+          <div id="search-results" class="search-results">
+            <div class="empty-state"><h3>Start with the actual catalog.</h3><p>Results and prices come from Bitrefill. Product text cannot authorize a purchase.</p></div>
+          </div>
+        </section>
+
+        <section class="panel review-panel crop" aria-labelledby="review-title">
+          <div class="panel-heading"><span class="step" aria-hidden="true">02</span><h2 id="review-title">The exact purchase.</h2><span class="small-tag">Owner approves</span></div>
+          <div id="review-empty" class="empty-state tall"><h3>Nothing is authorized yet.</h3><p>Select a product to build an intent. Approval applies to that exact action only.</p></div>
+          <form id="proposal-form" hidden>
+            <div class="selected-product"><span class="muted">Selected product</span><h3 id="product-name"></h3><code id="product-id"></code></div>
+            <div class="form-row">
+              <div class="grow"><label for="package">Denomination</label><select id="package" required></select></div>
+              <div class="grow"><label for="payment-method">Payment method</label><select id="payment-method" required></select></div>
+            </div>
+            <label for="recipient" id="recipient-label">Recipient</label>
+            <input id="recipient" autocomplete="off" maxlength="160">
+            <label for="email" id="email-label">Receipt email</label>
+            <input id="email" type="email" autocomplete="email" placeholder="you@example.com" required maxlength="254">
+            <p id="account-receipt" class="field-note" hidden>Receipt goes to your connected Bitrefill account. No email address is submitted.</p>
+            <label for="intent-cap">Your maximum total (USD)</label>
+            <input id="intent-cap" type="number" min="0.01" step="0.01" required>
+            <p class="field-note">The server rechecks the current price and policy before execution.</p>
+            <button class="primary-button full-width" type="submit">Prepare exact intent</button>
+          </form>
+          <div id="intent-review" hidden>
+            <div class="intent-banner"><span class="muted">Bound to your approval</span><span id="intent-status" class="status-tag"></span></div>
+            <dl class="review-terms" id="intent-terms"></dl>
+            <div class="digest-row"><span>Intent fingerprint</span><code id="intent-digest"></code></div>
+            <p class="field-note" id="intent-expiry"></p>
+            <button id="approve-button" class="primary-button authority full-width">Approve these exact terms</button>
+            <button id="execute-button" class="primary-button authority full-width" hidden>Create the approved invoice</button>
+            <button id="refresh-button" class="secondary-button full-width" hidden>Check provider status</button>
+            <a id="payment-link" class="primary-button full-width" target="_blank" rel="noopener noreferrer" hidden>Open provider payment page <span aria-hidden="true">↗</span></a>
+            <p id="invoice-note" class="field-note"></p>
+            <p id="commerce-watch" class="field-note watch-note"></p>
+            <button id="new-intent-button" class="text-button">Choose another product</button>
+          </div>
+        </section>
+      </div>
+
+      <section class="panel activity-panel" aria-labelledby="activity-title">
+        <div class="panel-heading"><span class="step" aria-hidden="true">03</span><h2 id="activity-title">An honest execution trail.</h2><button id="load-history" class="text-button">Refresh history</button></div>
+        <div class="table-scroll"><table><thead><tr><th>Intent</th><th>Product</th><th>Amount</th><th>Status</th><th><span class="visually-hidden">Details</span></th></tr></thead><tbody id="history-body"><tr><td colspan="5" class="empty-cell">Sign in to see your purchase history.</td></tr></tbody></table></div>
+        <div id="audit-events" class="audit-events" hidden></div>
+      </section>
+      <p class="page-footnote">A created invoice is not a payment. Delivery is shown only when the provider reports every order delivered.</p>
+    </section>
+
+    <section class="page-panel" id="private-panel" role="tabpanel" aria-labelledby="private-tab" hidden>
+      <div class="private-hero">
+        <figure class="shield-stage crop">
+          <canvas id="shield-canvas" aria-hidden="true"></canvas>
+          <span class="stage-label stage-top">Zcash testnet</span>
+          <span class="stage-label stage-state" id="shield-state">No payment request</span>
+          <figcaption>The mark assembles only after the receiving wallet verifies a mined shielded payment.</figcaption>
+        </figure>
+        <div class="private-copy">
+          <h1>Private payment. Verified access.</h1>
+          <p>A separate Zcash-native merchant. A shielded testnet payment unlocks one resource after the receiving wallet verifies it.</p>
+          <div class="resource">
+            <h2 id="merchant-name">Pegasus private resource</h2>
+            <p>A small pay-to-access flow with a unique encrypted order memo and a single-use entitlement.</p>
+            <div class="resource-price"><strong id="resource-price">—</strong><span>TAZ, testnet coins</span></div>
+            <button id="create-private-order" class="primary-button full-width">Create testnet payment request</button>
+            <p class="field-note" id="zcash-status">Checking wallet configuration…</p>
+          </div>
+          <div class="wallet-card">
+            <div class="wallet-heading"><h3>Your wallet</h3><span id="wallet-state" class="status-tag">Checking…</span></div>
+            <p id="wallet-detail" class="field-note">Looking for the Noir testnet extension…</p>
+            <button id="wallet-connect" class="secondary-button full-width" type="button" hidden>Connect Noir wallet</button>
+            <a id="wallet-install" class="text-button" href="https://github.com/NoirWallet/noir-wallet/releases" target="_blank" rel="noopener noreferrer" hidden>Get the Noir testnet extension <span aria-hidden="true">↗</span></a>
+          </div>
         </div>
-        <section class="card activity-card"><div class="card-heading"><div><span class="step-label">03 / VERIFY</span><h2>An honest execution trail.</h2></div><button id="load-history" class="text-button">Refresh history ↻</button></div><div class="table-scroll"><table><thead><tr><th>Intent</th><th>Product</th><th>Amount</th><th>Status</th><th></th></tr></thead><tbody id="history-body"><tr><td colspan="5" class="empty-cell">No history loaded. Connect a local session to see your intents.</td></tr></tbody></table></div><div id="audit-events" class="audit-events" hidden></div></section>
-        <p class="page-footnote">A created invoice is not a payment. Delivery is shown only when the provider reports every order delivered.</p>
+      </div>
+
+      <section class="workflow" aria-label="Private payment steps">
+        <ol class="workflow-steps" id="private-steps">
+          <li><span class="workflow-index">1</span><span class="workflow-label">Sign in</span></li>
+          <li><span class="workflow-index">2</span><span class="workflow-label">Create request</span></li>
+          <li><span class="workflow-index">3</span><span class="workflow-label">Pay from wallet</span></li>
+          <li><span class="workflow-index">4</span><span class="workflow-label">Mined and verified</span></li>
+          <li><span class="workflow-index">5</span><span class="workflow-label">Redeem access</span></li>
+        </ol>
+        <div class="workflow-next"><p><span class="muted">Next</span> <span id="private-next">Checking your session…</span></p><button id="private-next-action" class="primary-button" type="button" hidden></button></div>
       </section>
-      <section class="page-panel" id="private-panel" role="tabpanel" aria-labelledby="private-tab" hidden>
-        <div class="page-heading"><div><span class="eyebrow">A SEPARATE ZCASH-NATIVE MERCHANT</span><h1>Private payment. Verified access.</h1><p>A shielded testnet payment unlocks one resource after the receiving wallet verifies it.</p></div><span class="outline-tag">ZCASH TESTNET</span></div>
-        <div class="private-layout"><section class="card resource-card"><div class="resource-art" aria-hidden="true"><span>P</span><div></div><div></div></div><span class="eyebrow">PROTECTED RESOURCE</span><h2 id="merchant-name">Pegasus private resource</h2><p>A small pay-to-access flow with a unique encrypted order memo and a single-use entitlement.</p><div class="resource-price"><strong id="resource-price">—</strong><span>TAZ · testnet coins</span></div><button id="create-private-order" class="primary-button full-width">Create testnet payment request <span aria-hidden="true">→</span></button><p class="field-note" id="zcash-status">Checking wallet configuration…</p></section>
-          <section class="card private-checkout"><div class="card-heading"><div><span class="step-label">PAY → CONFIRM → REDEEM</span><h2>Your payment request.</h2></div><span class="small-tag">Shielded</span></div><div id="private-empty" class="empty-state tall"><div class="empty-symbol" aria-hidden="true">◈</div><h3>Access follows confirmation.</h3><p>The merchant watches its receiving wallet.<br>A sent transaction alone never unlocks access.</p></div><div id="private-order" hidden><div class="intent-banner"><span class="eyebrow">TESTNET ONLY</span><span id="private-status" class="status-tag"></span></div><dl class="review-terms" id="private-terms"></dl><a id="zcash-uri" class="secondary-button full-width">Open a Zcash wallet ↗</a><button id="noir-send" class="primary-button full-width">Connect & pay with Noir</button><p class="field-note">Use the separate Noir testnet extension. Your wallet computes the fee and asks you to approve the send.</p><button id="private-refresh" class="secondary-button full-width">Verify payment with receiving wallet</button><a id="private-explorer" target="_blank" rel="noopener noreferrer" class="text-button" hidden>View testnet transaction ↗</a><button id="private-redeem" class="primary-button full-width" hidden>Redeem single-use access</button><div id="private-content" class="private-content" hidden></div></div></section></div>
-        <section class="trust-strip"><span class="shield-icon" aria-hidden="true">◈</span><div><h3>What stays private, and who sees what.</h3><p>Shielded amount and memo are private on-chain. The merchant's viewing wallet sees your payment and order memo. The light-wallet server sees connection timing and IP. Testnet TAZ does not pay for Bitrefill goods.</p></div></section>
+
+      <section class="panel private-checkout" aria-labelledby="checkout-title">
+        <div class="panel-heading"><h2 id="checkout-title">Your payment request.</h2><span class="small-tag">Shielded</span></div>
+        <div id="private-empty" class="empty-state"><h3>Access follows confirmation.</h3><p>The merchant watches its receiving wallet. A sent transaction alone never unlocks access.</p></div>
+        <div id="private-order" hidden>
+          <div class="private-order-grid">
+            <div>
+              <div class="intent-banner"><span class="muted">Testnet only</span><span id="private-status" class="status-tag"></span></div>
+              <dl class="review-terms" id="private-terms"></dl>
+            </div>
+            <div class="private-actions">
+              <dl class="review-terms pay-summary" id="pay-summary"></dl>
+              <p class="field-error" id="wallet-funds" hidden></p>
+              <a id="wallet-faucet" class="text-button" href="https://fauzec.com" target="_blank" rel="noopener noreferrer" hidden>Get testnet TAZ from Fauzec <span aria-hidden="true">↗</span></a>
+              <button id="noir-send" class="primary-button authority full-width">Connect and pay with Noir</button>
+              <p class="field-note">Your wallet shows the final fee and asks you to approve the send. Pegasus never sees your keys.</p>
+              <details class="other-wallet" id="other-wallet">
+                <summary>Pay from another wallet</summary>
+                <a id="zcash-uri" class="secondary-button full-width">Open in a Zcash wallet <span aria-hidden="true">↗</span></a>
+                <div class="copy-list">
+                  <div class="copy-row"><span>Address</span><code id="copy-address"></code><button type="button" class="text-button" data-copy="copy-address">Copy</button></div>
+                  <div class="copy-row"><span>Amount</span><code id="copy-amount"></code><button type="button" class="text-button" data-copy="copy-amount">Copy</button></div>
+                  <div class="copy-row"><span>Memo</span><code id="copy-memo"></code><button type="button" class="text-button" data-copy="copy-memo">Copy</button></div>
+                </div>
+                <p class="field-note">Send exactly this amount to a shielded testnet address with this memo. The memo is how the merchant finds your payment.</p>
+              </details>
+              <button id="private-refresh" class="secondary-button full-width">Check payment now</button>
+              <p class="field-note watch-note" id="private-watch"></p>
+              <a id="private-explorer" target="_blank" rel="noopener noreferrer" class="text-button" hidden>View testnet transaction <span aria-hidden="true">↗</span></a>
+              <button id="private-redeem" class="primary-button authority full-width" hidden>Redeem single-use access</button>
+            </div>
+          </div>
+          <div id="private-content" class="private-content" hidden></div>
+        </div>
       </section>
-    </main>
-  </div>
-  <dialog id="session-dialog"><form id="session-form"><div class="dialog-heading"><div><span class="eyebrow">LOCAL AUTHORIZATION</span><h2>Connect your session.</h2></div><button class="icon-button" type="button" id="session-close" aria-label="Close session settings">×</button></div><p>Use your local tokens. An agent token can prepare and execute approved intents; only the owner token can approve them.</p><label for="owner-token">Owner token</label><input id="owner-token" type="password" autocomplete="off" placeholder="Required for exact approval"><label for="agent-token">Agent token <span class="muted">(optional)</span></label><input id="agent-token" type="password" autocomplete="off" placeholder="Used for catalog and execution"><p class="field-note">Tokens stay in this tab's session storage. Execution grants stay in memory. No provider API key belongs here.</p><div class="dialog-actions"><button id="clear-session" type="button" class="text-button">Clear session</button><button class="primary-button" type="submit">Connect session →</button></div></form></dialog>
+
+      <section class="trust-strip">
+        <h3>What stays private, and who sees what.</h3>
+        <p>Shielded amount and memo are private on-chain. The merchant's viewing wallet sees your payment and order memo. The light-wallet server sees connection timing and IP. Testnet TAZ does not pay for Bitrefill goods.</p>
+      </section>
+    </section>
+  </main>
+
+  <nav class="hud" aria-label="Workspace">
+    <div class="hud-tabs" role="tablist">
+      <button class="hud-tab selected" id="commerce-tab" role="tab" aria-selected="true" aria-controls="commerce-panel">Commerce</button>
+      <button class="hud-tab" id="private-tab" role="tab" aria-selected="false" aria-controls="private-panel">Private resource</button>
+    </div>
+    <span class="hud-status"><span class="connection-dot" id="gateway-dot" aria-hidden="true"></span><span id="gateway-status">Connecting…</span></span>
+    <span class="hud-clock" id="hud-clock" aria-hidden="true">--:--:--</span>
+    <button id="topbar-session" class="hud-session">Sign in</button>
+  </nav>
+
+  <dialog id="session-dialog" aria-labelledby="session-title">
+    <form id="session-form" novalidate>
+      <div class="dialog-heading"><h2 id="session-title">Sign in to Pegasus</h2><button class="icon-button" type="button" id="session-close" aria-label="Close sign in">×</button></div>
+      <p id="session-status">Paste an access token from your local configuration. The gateway tells you what it allows.</p>
+      <p id="session-reason" class="session-reason" hidden></p>
+      <label for="session-token">Access token</label>
+      <div class="token-field"><input id="session-token" type="password" autocomplete="off" spellcheck="false" placeholder="OWNER_TOKEN from your .env" aria-describedby="session-error session-help"><button type="button" id="token-reveal" class="text-button" aria-pressed="false">Show</button></div>
+      <p class="field-error" id="session-error" role="alert" hidden></p>
+      <p class="field-note" id="session-help">The owner token can search, prepare and approve. The agent token can search and prepare, but never approve. Tokens stay in this tab and are removed when you close it.</p>
+      <div class="dialog-actions"><button id="clear-session" type="button" class="text-button" hidden>Sign out</button><button class="primary-button" type="submit" id="session-submit">Sign in</button></div>
+    </form>
+  </dialog>
 </body>
 </html>
