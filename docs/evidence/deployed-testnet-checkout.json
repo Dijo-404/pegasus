@@ -1,0 +1,65 @@
+{
+  "network": "zcash-public-testnet",
+  "base_url": "https://notified-accountability-requirement-taste.trycloudflare.com",
+  "started_at": "2026-11-04T12:36:52.420274+00:00",
+  "verified_at": "2026-11-04T12:37:44.652141+00:00",
+  "order_id": "zo_0db0c48c2b424bfeb77893feffd48fa7",
+  "memo": "PEGASUS-cd7ed527482844d78f0b915a36dbc7ab",
+  "amount_zats": 100000,
+  "recipient": "utest1dswv9aae85nfrhen3jt9jt6ppm7ch6mdgkcu0ds4sdg72ts5sqx575xlsasq9e9mrugsea2xl32w7mp50fzj29q9g6cfx97d727ufxx6d5eqlt90vyuccw4wtf0djl22eg6e00x7jfll6suv59ulgwu7s2n5ydlsmp380cjjxuzv6ryw",
+  "birth_height": 4581901,
+  "broadcast_at": "2026-11-04T12:37:05.381300+00:00",
+  "confirmed_at": "2026-11-04T12:37:44.425338+00:00",
+  "receipt": {
+    "txid": "c1d1319c62a1cca8c61502e9e27be92a72168e962de8d92831a09cfb91d45c7a",
+    "height": 4582071,
+    "confirmations": 1,
+    "amount_zats": 100000,
+    "pool": 3
+  },
+  "confirmations_required": 1,
+  "explorer_url": "https://zexplorer.app/testnet/tx/c1d1319c62a1cca8c61502e9e27be92a72168e962de8d92831a09cfb91d45c7a",
+  "checks": {
+    "public_health": {
+      "http_status": 200
+    },
+    "missing_authentication": {
+      "http_status": 401,
+      "code": "UNAUTHORIZED"
+    },
+    "foreign_origin": {
+      "http_status": 403,
+      "code": "ORIGIN_DENIED"
+    },
+    "create_order": {
+      "http_status": 200
+    },
+    "early_redemption": {
+      "http_status": 409,
+      "code": "NOT_REDEEMABLE"
+    },
+    "unpaid_refresh": {
+      "http_status": 200,
+      "status": "AWAITING_PAYMENT"
+    },
+    "confirmed_refresh": {
+      "http_status": 200,
+      "status": "CONFIRMED"
+    },
+    "redemption_replay": {
+      "http_status": 409,
+      "code": "NOT_REDEEMABLE"
+    },
+    "redeemed_refresh": {
+      "http_status": 200,
+      "status": "REDEEMED"
+    }
+  },
+  "redemption": {
+    "http_status": 200,
+    "resource_returned": true,
+    "observed_at": "2026-11-04T12:37:44.576853+00:00"
+  },
+  "lightwallet_server": "https://testnet.zec.rocks:443",
+  "limits": "A real capped public-testnet payment was sent from the local disposable payer. The deployed HTTP application's independent watch-only receiver verified the mined note, exact memo and amount. The public explorer alone cannot reveal shielded amount or memo. Cloudflare terminates HTTPS and can see application requests; bearer credentials are omitted from this receipt. This temporary demo requires its local processes to remain running. Bitrefill settlement was not executed."
+}
