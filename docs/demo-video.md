@@ -1,62 +1,89 @@
 # Pitch and demo video
 
-The revised exported film is **complete and verified**: **120.466667 seconds (2:00.5)**, 1920 × 1080 (16:9), at 30 fps, built with **HyperFrames 0.9.12**. It uses **1.10× narration and footage playback with preserved audio pitch**, plus cleaner brand panel transitions. The original English stock narration asset measures **129.724 seconds**; at the new speed, its timeline playback is **117.931 seconds**, followed by approximately **2.536 seconds** of final hold. Source offsets, payment evidence and disclosures remain intact.
+The **approved v4 pitch is exported and verified**: **120 seconds (2:00), eight scenes, 3,600 frames**, at 1920 × 1080 (16:9)/30 fps, using HyperFrames 0.9.12. It leads with delegated-spending authority and brings the saved verified x402 result forward to **12 seconds**. [Actual narration used](demo-narration.md) · [Live API-payment receipt](evidence/x402-testnet-payment.json) · [v4 export receipt](evidence/demo-video-export-v4.json).
 
-[![Watch the Pegasus pitch and demo video](assets/demo-video-poster.jpg)](assets/pegasus-pitch-demo.mp4)
+The user approved the pitch preview before final export. The current repository MP4 is v4. The 144.466667-second v3 preview was superseded without export; the older v2 export receipt remains unchanged as historical evidence.
 
-[**Watch or download the final MP4**](assets/pegasus-pitch-demo.mp4) · [Poster](assets/demo-video-poster.jpg) · [Export verification receipt](evidence/demo-video-export.json)
+[![Watch the verified v4 pitch](assets/demo-video-poster.jpg)](assets/pegasus-pitch-demo.mp4)
 
-## Verified output
+[**Watch or download the verified pitch**](assets/pegasus-pitch-demo.mp4) · [Poster](assets/demo-video-poster.jpg) · **16.7 MiB** · [Export receipt](evidence/demo-video-export-v4.json)
+
+## Current pitch and animation
+
+The new story is **delegate the task → real API proof → exact permission → one shared budget → shielded access → honest commerce status → trust → invitation to build**. It presents the product's value before a technical walkthrough. No target-user validation, customer adoption or demand is invented.
+
+One blue approval boundary travels across the product frame, exact-terms explanation and budget ledger. Masked headline reveals land and hold; matched product-frame movement carries the viewer into actual evidence. The private checkout changes to its real black/gold UI, then returns to paper/blue for commerce and the closing mark. These are source-backed frame carries and line draws, rather than a curtain wipe on every cut. Explanations remain labelled and never imitate a performed approval.
+
+| Time | Pitch scene | Main evidence or reading |
+| --- | --- | --- |
+| 0–12s | Delegate the task. Keep the authority. | New opening and actual workspace; the owner retains payment authority. |
+| 12–35s | Already proven on testnet. | Actual saved x402 result, terms and audit, captured after settlement. |
+| 35–48s | Your approval binds the action. | Labelled approval-model explanation; changed terms require fresh approval. |
+| 48–60s | One budget. One attempt. | Labelled guard-policy explanation; reserve the approved maximum before signing. |
+| 60–83s | Shielded payment. Real access. | Recorded manual Zcash checkout, mined confirmation and single-use access. |
+| 83–95s | Verified catalog. Delivery comes next. | Actual Bitrefill catalog and review; purchase/delivery remain pending. |
+| 95–108s | Clear authority. Explicit trust. | EVM signer vs watch-only receiver, operator and external services. |
+| 108–120s | Build with agents. Keep decisions yours. | New closing, original mark, repository and testnet-demo invitation. |
+
+## Actual narration and local review
+
+The audio uses a **new 48-word opening/closing take**, source duration **20.114285714 seconds**, plus whole-sentence excerpts of the existing stock narration and the earlier x402 paragraph. The full rewritten pitch draft was not used. [The published script](demo-narration.md) matches the actual source map, rather than a draft that has not been synthesized.
+
+Every voice clip has one pitch-preserved **1.10×** playback adjustment. Narration clip playback totals **96.815028 seconds** across the two-minute timeline; the remaining time contains short reading holds, handoffs and the final frame. The opening runs approximately 0.5–9.091 seconds; the closing approximately 108.5–118.195 seconds. Background music continues beneath the sequence. Encoded audio measures **−14.30 LUFS integrated, −1.92 dBTP true peak and 6.6 LU loudness range**. The user approved the preview; agents do not claim subjective listening.
+
+Preview: <http://localhost:3004/#project/pegasus-film>. It works on the operator's machine while the preview server is running and is separate from the public application tunnel. The ignored editable project is `.local/video/pegasus-film/`. **PITCH-TIMING.json** is the authoritative v4 scene/voice source map; **PITCH-NARRATION.txt** contains the exact spoken text. `frame.md`, `STORYBOARD.md`, `BRIEF.md` and `SPEC.md` record motion, source and evidence constraints.
+
+The approved preview and exported film now represent the same v4 pitch. The preview remains editable for future revisions. Previous approvals and measurements remain associated with their own historical exports.
+
+## Verified output (v4)
 
 | Property | Measured result |
 | --- | --- |
 | File | `docs/assets/pegasus-pitch-demo.mp4` |
-| Duration / frames | 120.466667 seconds / 3,614 frames |
+| Duration / frames | 120.000000 seconds / 3,600 frames |
 | Picture | 1920 × 1080, 30 fps, H.264, `yuv420p` |
 | Audio | AAC, 48 kHz, stereo |
-| Size | 7,744,454 bytes, approximately 7.4 MiB |
+| Size | 17,476,449 bytes, approximately 16.67 MiB |
 | Full audio/video decode | Passed without errors |
-| Encoded audio measurement | −14.21 LUFS integrated, −1.54 dBTP true peak |
+| Encoded audio measurement | −14.30 LUFS integrated, −1.92 dBTP true peak, 6.6 LU loudness range |
+| SHA-256 | `a3bf52eddd02c0e6d86e1f2dc8b8560a83323d023ca82b29f9fa50f163325e85` |
 
-Twenty-one decoded content frames and twenty transition frames were visually reviewed, including the actual payment proof sequence. Audio levels were measured; no subjective listening test is claimed. The export receipt records the file's SHA-256, exact media metadata and transition details.
+Full audio/video decoding passed. Fifteen decoded content frames and thirty-five seam frames were visually reviewed. Audio levels were measured, without an agent listening claim. The [new v4 export receipt](evidence/demo-video-export-v4.json) records the current file's SHA-256 and media metadata. The poster is taken from the pitch at six seconds.
 
-## Keep editing locally
+Historical v2 measured 120.466667 seconds, 3,614 frames and 7,744,454 bytes, with −14.21 LUFS integrated/−1.54 dBTP audio. Its [original receipt](evidence/demo-video-export.json) is retained unchanged; those numbers no longer describe the current MP4 path. Its local backup is `.local/video/revisions/v2-before-v4-export/`.
 
-Preview: <http://localhost:3004/#project/pegasus-film>
+## Evidence used in the pitch
 
-This address works only on the operator's machine while the HyperFrames preview server is running. It is separate from the public application tunnel. The editable project is in the ignored directory `.local/video/pegasus-film/`; its `TIMING.json` supplies the authoritative nine scene boundaries, and `BRIEF.md` and `SPEC.md` record the editorial and evidence constraints.
+### Saved x402 HTTP payment
 
-The preview remains the editable source for future revisions. The review checkpoint and revised export are complete; the verified MP4 is linked above.
-
-## Real source footage and payment
-
-The commerce footage comes from the running dashboard and authenticated catalog flow. Explanatory graphics describe the approval model and explicitly distinguish the two merchant lanes. They are not screenshots of a paid invoice. No Bitrefill purchase or delivered product is claimed; the account's test-product enablement remained pending at the recorded preflight.
-
-The private-resource footage records a fresh API-created order and actual shielded public-testnet payment:
+The early proof reviews [the actual saved API result](assets/demo-x402.png), labelled **Saved receipt · recorded after settlement**. It does not recreate browser approval or make another payment. The original run used owner approval and agent-credential execution through the loopback gateway, with the live external testnet API and public RPC. [Public receipt, result and audit](evidence/x402-testnet-payment.json).
 
 | Field | Observed value |
 | --- | --- |
-| Transaction | [`5e0179d3ca9ea1be3835a0eadb92ade8244fb4e5f25f8c647c3e74aff0e47929`](https://zexplorer.app/testnet/tx/5e0179d3ca9ea1be3835a0eadb92ade8244fb4e5f25f8c647c3e74aff0e47929) |
-| Amount / pool | 100,000 zats (0.001 TAZ), Ironwood |
-| Mined height / verification | 4582394, one confirmation |
-| Redemption | HTTP 200, resource returned once |
-| Repeated redemption | HTTP 409, `NOT_REDEEMABLE` |
-| Public receipt | [recorded-demo-checkout.json](evidence/recorded-demo-checkout.json) |
+| Transaction | [0x8f144b1a9880cc15eb7e0ad1364b4947973c68cf35b2a73dbb1f1ec77e81c86d](https://sepolia.basescan.org/tx/0x8f144b1a9880cc15eb7e0ad1364b4947973c68cf35b2a73dbb1f1ec77e81c86d) |
+| Amount / approved ceiling | 0.001 test USDC / one USD cent |
+| Network / mined block | Base Sepolia / 54451642 |
+| Verification | Mined status 1, exact USDC Transfer and matching AuthorizationUsed nonce |
+| Replay | HTTP 409 GRANT_REPLAY |
 
-**The payer step is manual.** Noir was not installed. The operator sent from the disposable local payer wallet through the loopback signing service using the amount, address and memo from the API-created order. A separate watch-only receiving database verified the mined note. The same development operator controls both wallets; this is not an independent-customer usability test or a recorded Noir approval popup.
+The gateway holds the dedicated EVM signing key. This USDC payment is transparent: payer, recipient and amount are public. The configured RPC is a trusted receipt source. It is separate from the shielded Zcash checkout and pending Bitrefill delivery.
 
-The recording's mining wait was **40.102 seconds**. The approved edit shortens that wait and labels it as condensed, preserving the distinction between a broadcast and the later receiving-wallet confirmation. The HTTP 409 replay result is supported by the recorded API receipt; its graphic is identified as receipt evidence rather than invented browser UI.
+### Recorded Zcash checkout
 
-## Evidence and privacy limits
+The genuine recorded checkout used transaction [5e0179d3ca9ea1be3835a0eadb92ade8244fb4e5f25f8c647c3e74aff0e47929](https://zexplorer.app/testnet/tx/5e0179d3ca9ea1be3835a0eadb92ade8244fb4e5f25f8c647c3e74aff0e47929): **0.001 TAZ, Ironwood, height 4582394**, verified at one confirmation. Access returned once; replay returned **HTTP 409 NOT_REDEEMABLE**. [Original recorded receipt](evidence/recorded-demo-checkout.json).
 
-The public explorer verifies transaction existence, height and fees. The shielded amount and memo were checked by the merchant's authorized watch-only receiver, not exposed by the explorer. The operator and receiving wallet can associate the order, memo, transaction and resource access; `testnet.zec.rocks` sees wallet synchronization IP and timing.
+**The payer step was manual.** Noir was not installed. A disposable local payer sent using the API-created order's amount, address and memo; the same operator controls both demo wallets. A separate watch-only receiver verified the mined note and cannot spend. The original **40.102-second mining wait is condensed and labelled**. The pitch reuses that recording; it does not perform another payment or portray an independent customer.
 
-TAZ settles only the independent Pegasus resource checkout. It does not pay for Bitrefill goods. Earlier receipts remain unchanged and are distinct from the fourth payment recorded for this film.
+The shielded amount and memo were checked by the authorized receiver. Public Zcash explorers show existence, height and fees, not those private fields. The operator can associate order, payment and access; the light-wallet service sees synchronization IP and timing. Earlier Zcash receipts remain historical evidence and are not renamed or reused as a newly filmed send.
 
-Footage and published assets must exclude bearer tokens, provider keys, seeds, spending/viewing keys, private checkout links, recipient contact information and redemption codes. The public payment receipt includes no wallet keys or bearer credentials. Voice and music are production assets; they are not evidence of app behavior or payment success.
+### Bitrefill and trust limits
 
-The source footage, editable composition and preview remain local working artifacts, while the final MP4 and poster live under `docs/assets/`. Their existence does not establish a submitted hackathon entry, separate video hosting or delivered Bitrefill goods.
+Actual authenticated catalog and review footage is shown. No Bitrefill invoice, payment or delivered product is claimed; test-product enablement and delivery verification remain pending. Testnet TAZ and the external API's USDC settle their separate flows, not Bitrefill goods.
+
+The operator, API/facilitator, public RPC, light-wallet service and Cloudflare remain trusted parties. The gateway's EVM signing authority differs from the watch-only Zcash receiver. An external agent's model provider sees tool data sent to it; narration production sends the script to the voice provider.
+
+No keys, seeds, viewing keys, credentials, private payment links, contact information or redemption codes may appear. Voice, music and explanatory animation are production assets, not payment evidence. The demo remains a single-operator prototype and does not establish user research, event submission or production readiness.
 
 ## Production assets
 
-The edit uses the project's Host Grotesk and Departure Mono fonts, actual dashboard recordings, local GSAP 3.15.0, and HyperFrames 0.9.12. English stock narration and the ambient music asset came through HeyGen; the narration provider received the production script. FFmpeg levels the audio and converts the original recordings to H.264 for browser playback. These source-clip conversions are separate from the final film export.
+The film uses original Pegasus SVG marks, local Host Grotesk/Departure Mono fonts, actual dashboard recordings, GSAP 3.15.0 and HyperFrames 0.9.12. The matching stock voice and ambient music came through HeyGen; no voice cloning or fictional speaker is used. New narration is limited to the opening/closing; body speech is reordered from existing takes at measured sentence boundaries. FFmpeg prepares source media and audio. Historical exports and immutable payment receipts remain separate from the new export verification.

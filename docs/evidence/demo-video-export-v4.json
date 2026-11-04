@@ -1,0 +1,88 @@
+{
+  "edition": 4,
+  "status": "approved-export-verified",
+  "exported_at_utc": "2026-11-04T18:22:48.771046+00:00",
+  "file": "docs/assets/pegasus-pitch-demo.mp4",
+  "sha256": "a3bf52eddd02c0e6d86e1f2dc8b8560a83323d023ca82b29f9fa50f163325e85",
+  "bytes": 17476449,
+  "duration_seconds": 120.0,
+  "frames": 3600,
+  "picture": {
+    "codec_name": "h264",
+    "width": 1920,
+    "height": 1080,
+    "avg_frame_rate": "30/1",
+    "duration": "120.000000",
+    "nb_frames": "3600",
+    "pix_fmt": "yuv420p"
+  },
+  "audio": {
+    "codec_name": "aac",
+    "sample_rate": "48000",
+    "channels": 2,
+    "duration": "120.000000"
+  },
+  "audio_measurement": {
+    "integrated_lufs": -14.3,
+    "true_peak_dbtp": -1.92,
+    "lra_lu": 6.6,
+    "audibly_auditioned": false
+  },
+  "framework": {
+    "name": "HyperFrames",
+    "version": "0.9.12",
+    "quality": "delivery",
+    "capture": "beginframe",
+    "gpu": "hardware",
+    "render_wall_seconds": 62.9
+  },
+  "story": {
+    "scenes": 8,
+    "proof_begins_at_seconds": 12,
+    "playback_rate": 1.1,
+    "pitch_preserved": true,
+    "narration_clip_playback_seconds": 96.81502782931352,
+    "new_stock_opening_and_closing_words": 48,
+    "new_narration_source_seconds": 20.114285714285714,
+    "body_narration": "Reused whole-sentence excerpts; no full new take generated",
+    "voice_source_map": "Editable project PITCH-TIMING.json and PITCH-AUDIO-MAP.json"
+  },
+  "checks": {
+    "full_audio_video_decode": "passed; no errors",
+    "content_frames_visually_reviewed": 15,
+    "transition_frames_visually_reviewed": 35,
+    "independent_encoded_visual_review": "passed",
+    "preview_approved_by_user": true,
+    "final_hold_and_repository_cta": "verified",
+    "historical_payment_receipts": "unchanged"
+  },
+  "poster": {
+    "file": "docs/assets/demo-video-poster.jpg",
+    "source": "Frame at6seconds from this verified encoded file",
+    "sha256": "121b193782d69f1415c1b9415b8ae17e2af395d8903180413009ae2895bc371b"
+  },
+  "evidence_sources": [
+    "recorded-demo-checkout.json",
+    "x402-testnet-payment.json",
+    "x402-testnet-verification.json",
+    "bitrefill-authenticated-preflight.json"
+  ],
+  "disclosures": [
+    "x402 footage is a saved receipt recorded after settlement; no new API payment or approval staged for filming.",
+    "Zcash footage reuses the genuine manual-payer checkout; operator controls both wallets and40.102second wait is condensed and labelled.",
+    "Base Sepolia USDC is transparent and gateway holds the dedicated signing key; Zcash receiver remains watch-only.",
+    "Bitrefill purchase and delivery remain pending.",
+    "Audio measured; user approved preview. No separate agent subjective audition is claimed."
+  ],
+  "previous_export": {
+    "edition": 2,
+    "historical_receipt": "demo-video-export.json",
+    "sha256": "c340cd79a7837d9f97270a8b8e88472f1199f2dc243975ee442c96f0428cd916",
+    "duration_seconds": 120.466667,
+    "preserved": "Original receipt and Git history; local backup in ignored video revisions"
+  },
+  "superseded_preview": {
+    "edition": 3,
+    "exported": false
+  }
+}

@@ -118,11 +118,11 @@ Open <https://notified-accountability-requirement-taste.trycloudflare.com>. Prot
 
 [![Watch the Pegasus pitch and demo video](docs/assets/demo-video-poster.jpg)](docs/assets/pegasus-pitch-demo.mp4)
 
-[**Watch or download the final MP4**](docs/assets/pegasus-pitch-demo.mp4) · **2:00.5** · **1920 × 1080 · 30 fps** · **7.4 MiB**
+[**Watch or download the verified pitch (v4)**](docs/assets/pegasus-pitch-demo.mp4) · **2:00** · **1920 × 1080 · 30 fps** · **16.7 MiB**
 
-The revised HyperFrames export is complete and verified, with **1.10× playback, preserved audio pitch, and cleaner brand panel transitions**. [Export receipt](docs/evidence/demo-video-export.json) · [Production and evidence notes](docs/demo-video.md). The film shows real catalog footage and a separate shielded testnet checkout, with the manual payer step and condensed mining wait disclosed; Bitrefill delivery remains pending.
+The approved v4 HyperFrames pitch is **exported and verified**: eight scenes, 3,600 frames, pitch-preserved **1.10×** media playback, full audio/video decode passed. Encoded audio measures **−14.30 LUFS** integrated and **−1.92 dBTP** true peak. [v4 export receipt](docs/evidence/demo-video-export-v4.json) · [Production and evidence notes](docs/demo-video.md).
 
-The optional [local editable preview](http://localhost:3004/#project/pegasus-film) works on the operator's machine while its preview server is running.
+The pitch brings [verified x402 proof](docs/evidence/x402-testnet-payment.json) forward to **0:12**. A blue approval frame carries exact permission into the shared budget and real results, with masked headlines, matched product-frame moves and reading holds. It reviews the earlier HTTP payment and recorded manual Zcash checkout; no new payment is staged. Bitrefill delivery remains pending. [Actual narration](docs/demo-narration.md) uses the new opening/closing and reordered existing speech. The optional [local editable preview](http://localhost:3004/#project/pegasus-film) works while its server runs. The superseded v3 preview was never exported; the [v2 receipt](docs/evidence/demo-video-export.json) remains historical evidence.
 
 ## Usage
 
@@ -192,6 +192,11 @@ The earlier recovered API checkout verified five confirmations. Its original ord
 Public explorers verify transaction existence, height and fees; they do not reveal shielded amounts or memos. The amounts and exact memo checks above came from the receiver's authorized watch-only wallet.
 
 ### Verified x402 testnet API payment
+
+<p align="center">
+  <a href="docs/assets/demo-x402.png"><img src="docs/assets/demo-x402.png" alt="Saved Pegasus API result showing the verified Base Sepolia transfer, amount, block and returned JSON" width="820" /></a>
+</p>
+<p align="center"><sub>Saved verified result · recorded after settlement</sub></p>
 
 On **4 November 2026**, the gateway completed a real x402 v2 `exact` API request using **0.001 test USDC on Base Sepolia**, with a **one-cent approved ceiling**. The actual HTTP flow used owner approval followed by execution with the agent credential. The configured public RPC verified a mined status-1 receipt, the exact USDC `Transfer`, and `AuthorizationUsed` for the signed nonce. This is a transparent EVM payment, separate from the shielded Zcash receipts and pending Bitrefill delivery. [Live receipt](docs/evidence/x402-testnet-payment.json).
 
@@ -434,7 +439,7 @@ Verify that the watch-only service is running on the configured loopback `/graph
 
 ### Next 30 days and submission
 
-- Complete a credential-backed Bitrefill invoice/delivery run and record its real invoice ID here. The [demo video](docs/assets/pegasus-pitch-demo.mp4) is exported; no delivered Bitrefill purchase is claimed.
+- Complete a credential-backed Bitrefill invoice/delivery run and record its real invoice ID here. The approved [two-minute pitch](docs/assets/pegasus-pitch-demo.mp4) is exported and verified. No delivered Bitrefill purchase is claimed.
 - Extend the verified x402 public-demo run to a real target API and review its custody, result handling and reconciliation requirements before broader use.
 - Validate missing invoice fields with the Bitrefill team before relaxing a fail-closed parser.
 - Run the UI with an actual target user and record their own feedback. No user demand evidence has been invented.
