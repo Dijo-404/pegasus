@@ -1,4 +1,5 @@
 """Create local credentials without printing them or overwriting existing configuration."""
+
 import os
 from pathlib import Path
 import secrets
@@ -18,5 +19,9 @@ except FileExistsError:
 else:
     with os.fdopen(fd, "w") as out:
         out.write(content)
-    print("Created private .env. Open it locally to configure providers and copy OWNER_TOKEN into the dashboard.")
-    print("Give only AGENT_TOKEN to your agent. Keep OWNER_TOKEN and provider credentials in the trusted process.")
+    print(
+        "Created private .env. Open it locally to configure providers and copy OWNER_TOKEN into the dashboard."
+    )
+    print(
+        "Give only AGENT_TOKEN to your agent. Keep OWNER_TOKEN and provider credentials in the trusted process."
+    )
