@@ -1,8 +1,143 @@
+<a id="readme-top"></a>
+
+<div align="center">
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-on-dark.svg" />
+  <img src="docs/assets/logo-on-light.svg" alt="Pegasus logo" width="110" />
+</picture>
+
 # Pegasus
 
-Policy-bound shopping for people who want an agent to prepare purchases while keeping exact approval and spending authority outside the model.
+**Policy-bound shopping for people who want an agent to prepare purchases while keeping exact approval and spending authority outside the model.**
+
+[![Python](https://img.shields.io/badge/Python-3.11%2B-555555?style=for-the-badge&logo=python&logoColor=white)](pyproject.toml)
+[![Architecture](https://img.shields.io/badge/Architecture-Clean-444444?style=for-the-badge)](docs/architecture.md)
+[![Status](https://img.shields.io/badge/Status-Prototype-333333?style=for-the-badge)](#limitations)
+
+[Quick start](#quick-start) · [Usage](#usage) · [Documentation](#documentation) · [Contributing](#contributing)
+
+</div>
+
+<br/>
+
+<p align="center">
+  <img src="docs/assets/demo-light.png" alt="Pegasus dashboard showing purchase budgets, exact approval, and a disconnected Bitrefill provider" width="820" />
+</p>
+
+> [!NOTE]
+> **Prototype v0.1.0.** Real shielded testnet payments have been verified. A credential-backed Bitrefill purchase-and-delivery run is still pending; invoice creation alone is not delivery.
+
+## Overview
+
+Pegasus is a local commerce gateway for people and small teams using an external shopping agent. It keeps purchase policy, exact owner approval, and execution authority in deterministic code, with a separate Zcash testnet merchant for private resource access.
 
 **Implemented:** live Bitrefill MCP adapter, separate owner approval, signed single-use execution grants, USD spend caps, encrypted SQLite records, an agent-facing MCP interface, and an independent Zcash testnet resource checkout. The dashboard runs locally with no frontend build step.
+
+### Features
+
+- **Bounded spending.** Default ceilings are $5 per purchase and $10 per India calendar day, with the approved maximum reserved before checkout.
+- **Exact owner approval.** A SHA-256 intent digest binds the product, denomination, recipient, method, currency, and ceiling to a 90-second grant.
+- **One purchase attempt.** Atomic grant consumption rejects replay; an ambiguous provider result remains `UNCERTAIN` with its reservation retained.
+- **Provider-backed delivery status.** Current catalog prices and invoice terms are checked; delivery is reported only when every order is delivered.
+- **Independent shielded checkout.** A watch-only receiver verifies mined testnet notes and the order memo before issuing a five-minute, single-use resource entitlement.
+- **Clear authority boundaries.** Domain rules, application use cases, external adapters, and HTTP/MCP interfaces occupy separate layers.
+
+## Why Pegasus
+
+An agent can select an item within a budget and still change the recipient, reuse an old approval, or act on a stale price. A conversational confirmation does not bind the later checkout arguments.
+
+```text
+Owner approves: exact SKU + denomination + recipient + method + spend ceiling
+Agent changes a term or replays the grant → gateway denies the purchase
+```
+
+Pegasus handles this with a canonical action, deterministic policy, a short-lived signed grant, and an atomic execution gateway. Product descriptions and model output do not authorize a purchase.
+
+> **The agent prepares a purchase; deterministic code and exact owner approval authorize it.**
+
+## Requirements
+
+| Requirement | Details |
+| :--- | :--- |
+| **OS** | The local demo was verified on Linux x86_64. Other operating systems have not been verified. |
+| **Runtime** | Python 3.11+ and `uv`; a browser for the dashboard. |
+| **Commerce** | A backend Bitrefill developer key and explicit product, receipt-email, and recipient allowlists. |
+| **Optional** | Node.js for Bitrefill CLI diagnostics and browser checks. |
+| **Optional private checkout** | A loopback `zkool_graphql` testnet receiver. The documented prebuilt wallet binary is Linux x86_64; other platforms may require a source build. |
+
+Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/). Node is only needed for optional Bitrefill CLI diagnostics and browser checks.
+
+## Installation
+
+```bash
+git clone https://github.com/Dijo-404/pegasus.git
+cd pegasus
+uv sync --locked
+```
+
+This installs the package and development dependencies from the committed lockfile into the project virtual environment. Wallet setup is separate; see [the Zcash testnet guide](docs/zcash-testnet.md).
+
+### Updating
+
+Stop the local server before updating, then restart it with the quick-start command.
+
+```bash
+git pull --ff-only
+uv sync --locked
+```
+
+The setup script preserves an existing `.env`.
+
+## Quick start
+
+```bash
+uv sync --locked  # Install the locked project dependencies
+uv run python scripts/setup_environment.py  # Create private local credentials without overwriting .env
+uv run uvicorn pegasus.bootstrap:create_app --factory --host 127.0.0.1 --port 8787  # Start the dashboard and trusted gateway on loopback
+```
+
+Open <http://127.0.0.1:8787>. Open the private `.env` locally and paste **OWNER_TOKEN** into the dashboard's session control. Bootstrap creates random credentials with mode 0600, does not print them, and never overwrites an existing `.env`.
+
+## Usage
+
+### Commands
+
+| Command | Description |
+| :--- | :--- |
+| `uv run python scripts/setup_environment.py` | Create random local owner, agent, signing, and encryption credentials; preserve existing configuration. |
+| `uv run uvicorn pegasus.bootstrap:create_app --factory --host 127.0.0.1 --port 8787` | Start the dashboard and trusted HTTP gateway. |
+| `uv run python -m pegasus.presentation.mcp.server` | Start the agent-facing stdio MCP server with `AGENT_TOKEN` supplied separately. |
+| `uv run python scripts/zcash_testnet.py --help` | Show the explicit testnet wallet setup, faucet, send, and watch commands. |
+| `uv run pytest -q` | Run unit, integration, security, and architecture checks. |
+
+### Examples
+
+**Review one purchase.** Configure the local allowlists, search the catalog, choose an exact denomination, and review every term. Approve as owner, execute the grant once, and refresh the authoritative invoice state. Open a provider payment link only after the gateway verifies its terms.
+
+**Pay for the separate private resource.** Create a testnet payment request, send the requested amount and memo from a compatible wallet, refresh until the receiving watcher confirms it, and redeem the entitlement once. See [the demo guide](docs/demo-guide.md) for the walkthrough.
+
+### Connect an agent
+
+The application supports an external MCP-capable coding or shopping agent. There is no embedded LLM, paid model dependency, or simulated autonomous purchase. This is the small trusted authority boundary around an agent.
+
+Start `pegasus.presentation.mcp.server` in a separate process with **only AGENT_TOKEN**, while the trusted HTTP gateway runs on loopback port 8787. The MCP process deliberately does not load `.env`.
+
+```json
+{
+  "mcpServers": {
+    "pegasus": {
+      "command": "/absolute/path/to/pegasus/.venv/bin/python",
+      "args": ["-m", "pegasus.presentation.mcp.server"],
+      "env": {"AGENT_TOKEN": "<copy only the local AGENT_TOKEN>"}
+    }
+  }
+}
+```
+
+Tools: `search_products`, `product_details`, `propose_purchase`, `execute_approved_purchase`, `purchase_status`. Approval happens in the owner dashboard. The dashboard can execute the approved grant itself; an external agent can execute a grant explicitly supplied by the owner. The agent never gets the owner credential, Bitrefill key, invoice access token or guest payment link.
+
+### Live payment evidence
 
 **Live evidence:** an independently verified shielded public-testnet payment of **0.001 TAZ**, Ironwood pool, mined at height **4581917**:
 [`d95a809359a47156c20d63eb560dabb99bdc3462d60f23e17689f73f7ffaefe5`](https://zexplorer.app/testnet/tx/d95a809359a47156c20d63eb560dabb99bdc3462d60f23e17689f73f7ffaefe5).
@@ -10,19 +145,9 @@ The receipt from the project's own watch-only verifier is in [docs/evidence/zcas
 
 The separate API order also received a real 0.001 TAZ transfer, verified five confirmations, released its resource, and rejected a second redemption with HTTP 409. [Full API evidence](docs/evidence/private-merchant-e2e.json) records the test interruption and recovery: the original order fields were restored after a temporary test process lost its ephemeral encryption key. No payment was resent during recovery, and this is not claimed as an uninterrupted run.
 
-**Bitrefill live purchase invoice:** not yet created. No Bitrefill developer credential was available. [Public CLI catalog reads](docs/evidence/bitrefill-catalog.json) succeeded; unit fixtures are never used by the runtime. A shielded transfer settles the separate demo resource; it does not pay Bitrefill.
+## Configuration
 
-## Run locally
-
-Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/). Node is only needed for optional Bitrefill CLI diagnostics and browser checks.
-
-```sh
-uv sync --locked
-uv run python scripts/setup_environment.py
-uv run uvicorn pegasus.bootstrap:create_app --factory --host 127.0.0.1 --port 8787
-```
-
-Open <http://127.0.0.1:8787>. Open the private `.env` locally and paste **OWNER_TOKEN** into the dashboard's session control. Bootstrap creates random credentials with mode 0600, does not print them, and never overwrites an existing `.env`.
+Settings live in the private `.env` file; the complete defaults and required keys are listed in [.env.example](.env.example). The owner and agent tokens must differ. Signing and encryption keys are required and generated by the setup script; provider credentials and allowlists must be configured locally.
 
 To enable commerce, set these values in `.env`, then restart the server:
 
@@ -40,7 +165,96 @@ Use a zero-balance Bitrefill account and a manual crypto method for development.
 
 The Zcash path uses a local watch-only `zkool_graphql` account. Set `ZCASH_ENABLED=true` only when that receiver is running. See [docs/zcash-testnet.md](docs/zcash-testnet.md) for safe wallet setup, faucet, actual send and verification commands. The live wallets created during implementation stay in ignored `.local/zcash/`; these are testnet development wallets, not production custody.
 
-## Architecture and file layout
+### Environment variables
+
+| Variable | Effect |
+| :--- | :--- |
+| `OWNER_TOKEN` | Authorize exact human approval and owner-only response fields. |
+| `AGENT_TOKEN` | Authorize bounded agent tools; cannot approve a purchase. |
+| `GRANT_SECRET` | Sign and verify short-lived execution grants in the trusted backend. |
+| `DATA_KEY` | Fernet key for encrypted local order and provider-token records. |
+| `DATABASE_PATH` | SQLite location; defaults to `.local/pegasus.db`. |
+| `BITREFILL_API_KEY` | Backend-only credential for live commerce; empty disables those calls. |
+| `MAX_PURCHASE_MINOR` / `MAX_DAILY_MINOR` | USD cent ceilings; defaults `500` / `1000`. |
+| `ALLOWED_PRODUCTS` / `ALLOWED_COUNTRIES` | Explicit product IDs and country codes. |
+| `ALLOWED_EMAILS` / `ALLOWED_RECIPIENTS` | Explicit receipt-email and delivery-recipient allowlists. |
+| `QUOTE_TTL_SECONDS` / `GRANT_TTL_SECONDS` | Quote and grant lifetimes; defaults `300` / `90`. |
+| `ZCASH_ENABLED` | Enable the independent merchant only after its receiver is running. |
+| `ZCASH_GRAPHQL_URL` / `ZCASH_ACCOUNT_ID` | Loopback wallet endpoint and receiving account; defaults `http://127.0.0.1:8000/graphql` / `1`. |
+| `ZCASH_CONFIRMATIONS` / `ZCASH_AMOUNT_ZATS` | Required confirmations and resource price; defaults `1` / `100000` zats. |
+
+### Files it creates
+
+| Path | Contents |
+| :--- | :--- |
+| `.env` | Private local credentials and configuration, created with mode 0600. |
+| `.venv/` | Locked Python project and development dependencies. |
+| `.local/pegasus.db` | Encrypted order records plus the grant, reservation, and audit ledger. |
+| `.local/zcash/` | Disposable testnet wallet databases and explicit wallet-tool state, when that setup is used. |
+| `.local/backups/pre-rename.db` | Private original database retained during the Pegasus rename, when present. |
+| `~/.zcash-params/` | Sapling parameters downloaded by the wallet tool on first start. |
+
+Private environment, wallet, database, and runtime files are ignored by git.
+
+## Privacy and safety
+
+1. **Shielded on-chain:** the separate merchant payment uses Ironwood/Sapling notes. Its amount and memo are visible to the receiver's viewing key, not the public explorer. Bitrefill commerce has no Zcash privacy claim.
+2. **App storage:** purchase fields, recipients, private orders and provider access tokens are Fernet-encrypted at rest. Intent IDs, digests, states, timestamps, grant consumption and budget reservations remain plaintext. Audit events contain reason codes, not recipients or codes. The operator holds the encryption key in local `.env` and can decrypt records.
+3. **Other parties:** `testnet.zec.rocks` sees wallet IP and sync timing. Fauzec sees the payer address and request IP. Bitrefill sees its account, purchase, receipt email and recipient. The watch-only service can see the receiving account's whole history but cannot spend. No CipherPay or Nym service is used. No LLM provider receives data from this app; any external agent's provider sees the tool calls you send it.
+4. **Trust and next fixes:** trust the local operator, wallet software, light-wallet server, provider and their reported chain/order state. Loopback binding, separate owner/agent credentials and no CORS serve a **single-operator local demo**. A compromised local process running as the operator can read `.env` and wallet databases; this is not OS isolation. Add real user sessions, per-user ownership, process isolation, quote fees verification, hardened deployment, reorg handling and data-retention controls before public hosting.
+
+## How it works
+
+```mermaid
+flowchart LR
+    A[Agent proposal] --> B[Current quote and policy]
+    B --> C[Exact owner approval]
+    C --> D[Single-use execution grant]
+    D --> E[Atomic budget reservation]
+    E --> F[Bitrefill invoice]
+    F --> G[Verified manual payment link]
+    G --> H[Provider delivery reconciliation]
+    I[Separate shielded testnet payment] --> J[Watch-only confirmation]
+    J --> K[Single-use resource entitlement]
+```
+
+The commerce and private-resource paths settle independently. A canonical action keeps approval and execution bound to the same terms; provider and receiving-wallet evidence determine the resulting state.
+
+### Core flow
+
+1. Search the real catalog and select an exact provider denomination, region, receipt email, recipient and manual payment method.
+2. Deterministic code verifies current prices with exact decimal arithmetic. Default maximums are **$5 per purchase and $10 per India calendar day**. The user can choose a smaller limit.
+3. The owner reviews the canonical fields and approves their SHA-256 digest. The authority issues a **90-second** HMAC-signed grant. The agent credential cannot approve.
+4. The gateway independently re-reads the catalog. Changed terms require fresh approval. One SQLite transaction consumes the grant and reserves the approved maximum against the daily cap before calling `buy-products`.
+5. There is one provider write attempt. A timeout or process interruption retains the grant consumption and budget reservation and records `UNCERTAIN`; it never blindly buys again.
+6. The authoritative invoice must match the approved items, recipient, receipt email, payment method, currency and ceiling. Missing or mismatched evidence blocks the payment link. Guest links are owner-only because they can embed invoice access tokens.
+7. The owner may pay the provider's manual checkout link. Refresh obtains provider state. Invoice `complete` is still pending until all orders are `delivered`. Redemption codes are never returned to the agent or stored in audit logs.
+
+The independent privacy flow is **create resource order → ZIP 321 request → user-approved shielded testnet send → watch-only verification of mined notes and memo → five-minute single-use entitlement**. Broadcast alone never unlocks the resource. One chain transaction cannot fulfil two orders.
+
+## Tech stack
+
+| Component | Tool |
+| :--- | :--- |
+| **Language** | [Python](https://www.python.org/) 3.11+ |
+| **HTTP application** | [FastAPI](https://fastapi.tiangolo.com/) and [Uvicorn](https://www.uvicorn.org/) |
+| **Agent protocol** | [Official MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk) |
+| **Commerce** | [Bitrefill MCP](https://docs.bitrefill.com/docs/ecommerce-mcp) |
+| **Testnet wallet** | [zkool2 / zkool_graphql](https://github.com/hhanh00/zkool2) |
+| **Optional browser wallet** | [Noir Wallet](https://github.com/NoirWallet/noir-wallet) |
+| **HTTP client** | [httpx](https://www.python-httpx.org/) |
+| **Schema and output parsing** | [jsonschema](https://python-jsonschema.readthedocs.io/) and [toon-format](https://pypi.org/project/toon-format/) |
+| **Storage and encryption** | [SQLite](https://www.sqlite.org/) and [cryptography](https://cryptography.io/) |
+| **Tests and browser checks** | [pytest](https://docs.pytest.org/) and [Playwright](https://playwright.dev/) |
+| **Dependencies and quality** | [uv](https://docs.astral.sh/uv/) and [Ruff](https://docs.astral.sh/ruff/) |
+
+### Built versus reused
+
+Lane 1 (rails and guardrails), with a separate Privacy merchant. New code implements the authority, SQLite ledger, policy, dashboard, read-only watcher and adapters. It uses the official MCP Python SDK, Bitrefill MCP, zkool2 `zkool_graphql`, optional Noir browser provider, FastAPI, httpx, jsonschema, TOON decoding and cryptography. Versions are pinned by [uv.lock](uv.lock); wallet release details are in the receipt. No code was copied from the repositories proposed in [the project specification](docs/project-specification.md), so their license/compatibility questions do not block this small implementation.
+
+The two official llms.txt briefs are saved intact in [AGENTS.md](AGENTS.md), with separate source copies in [docs/briefs](docs/briefs). [docs/project-specification.md](docs/project-specification.md) is the original design; its broader TypeScript planner and production architecture remain future work.
+
+## Project structure
 
 Pegasus uses four layers with dependencies pointing toward the domain. Purchase rules do not depend on FastAPI, MCP, SQLite or wallet clients. Application services receive interfaces; `pegasus.bootstrap` connects them to concrete adapters. See [the architecture guide](docs/architecture.md) for the dependency rules and module responsibilities.
 
@@ -61,39 +275,21 @@ docs/                    # guides, specification, source briefs and real evidenc
 
 Python modules use `snake_case` names that describe their role, such as `commerce_service.py`, `sqlite_repository.py` and `zcash_client.py`. Guides use lowercase hyphenated names. Required project entry files remain `README.md`, `AGENTS.md` and `FEEDBACK.md`.
 
-## Core flow
+## Development
 
-1. Search the real catalog and select an exact provider denomination, region, receipt email, recipient and manual payment method.
-2. Deterministic code verifies current prices with exact decimal arithmetic. Default maximums are **$5 per purchase and $10 per India calendar day**. The user can choose a smaller limit.
-3. The owner reviews the canonical fields and approves their SHA-256 digest. The authority issues a **90-second** HMAC-signed grant. The agent credential cannot approve.
-4. The gateway independently re-reads the catalog. Changed terms require fresh approval. One SQLite transaction consumes the grant and reserves the approved maximum against the daily cap before calling `buy-products`.
-5. There is one provider write attempt. A timeout or process interruption retains the grant consumption and budget reservation and records `UNCERTAIN`; it never blindly buys again.
-6. The authoritative invoice must match the approved items, recipient, receipt email, payment method, currency and ceiling. Missing or mismatched evidence blocks the payment link. Guest links are owner-only because they can embed invoice access tokens.
-7. The owner may pay the provider's manual checkout link. Refresh obtains provider state. Invoice `complete` is still pending until all orders are `delivered`. Redemption codes are never returned to the agent or stored in audit logs.
+Read [docs/architecture.md](docs/architecture.md) and [AGENTS.md](AGENTS.md) before making changes. Keep domain and application code independent of transport and concrete infrastructure implementations.
 
-The independent privacy flow is **create resource order → ZIP 321 request → user-approved shielded testnet send → watch-only verification of mined notes and memo → five-minute single-use entitlement**. Broadcast alone never unlocks the resource. One chain transaction cannot fulfil two orders.
-
-## Connect an agent
-
-The application supports an external MCP-capable coding or shopping agent. There is no embedded LLM, paid model dependency, or simulated autonomous purchase. This is the small trusted authority boundary around an agent.
-
-Start `pegasus.presentation.mcp.server` in a separate process with **only AGENT_TOKEN**, while the trusted HTTP gateway runs on loopback port 8787. The MCP process deliberately does not load `.env`.
-
-```json
-{
-  "mcpServers": {
-    "pegasus": {
-      "command": "/absolute/path/to/pegasus/.venv/bin/python",
-      "args": ["-m", "pegasus.presentation.mcp.server"],
-      "env": {"AGENT_TOKEN": "<copy only the local AGENT_TOKEN>"}
-    }
-  }
-}
+```bash
+git clone https://github.com/Dijo-404/pegasus.git  # Get the source
+cd pegasus                                      # Enter the project
+uv sync --locked                                # Install locked dependencies
+uv run pytest -q                                # Run all checks in the test suite
+uv run ruff check .                             # Lint Python source
+uv run ruff format --check src tests scripts     # Check Python formatting
+node --check src/pegasus/presentation/web/app.js  # Check dashboard JavaScript
 ```
 
-Tools: `search_products`, `product_details`, `propose_purchase`, `execute_approved_purchase`, `purchase_status`. Approval happens in the owner dashboard. The dashboard can execute the approved grant itself; an external agent can execute a grant explicitly supplied by the owner. The agent never gets the owner credential, Bitrefill key, invoice access token or guest payment link.
-
-## Verification
+### Verification
 
 ```sh
 uv run pytest -q
@@ -105,20 +301,53 @@ Tests exercise tampered/expired/replayed grants, concurrent execution, durable d
 
 The dashboard was also checked with Playwright on desktop and mobile: no JavaScript errors, no horizontal overflow, token entry works, and unconfigured actions remain disabled. See [docs/demo-guide.md](docs/demo-guide.md) for the walkthrough.
 
-## Privacy and trust
+## Troubleshooting
 
-1. **Shielded on-chain:** the separate merchant payment uses Ironwood/Sapling notes. Its amount and memo are visible to the receiver's viewing key, not the public explorer. Bitrefill commerce has no Zcash privacy claim.
-2. **App storage:** purchase fields, recipients, private orders and provider access tokens are Fernet-encrypted at rest. Intent IDs, digests, states, timestamps, grant consumption and budget reservations remain plaintext. Audit events contain reason codes, not recipients or codes. The operator holds the encryption key in local `.env` and can decrypt records.
-3. **Other parties:** `testnet.zec.rocks` sees wallet IP and sync timing. Fauzec sees the payer address and request IP. Bitrefill sees its account, purchase, receipt email and recipient. The watch-only service can see the receiving account's whole history but cannot spend. No CipherPay or Nym service is used. No LLM provider receives data from this app; any external agent's provider sees the tool calls you send it.
-4. **Trust and next fixes:** trust the local operator, wallet software, light-wallet server, provider and their reported chain/order state. Loopback binding, separate owner/agent credentials and no CORS serve a **single-operator local demo**. A compromised local process running as the operator can read `.env` and wallet databases; this is not OS isolation. Add real user sessions, per-user ownership, process isolation, quote fees verification, hardened deployment, reorg handling and data-retention controls before public hosting.
+<details>
+<summary><b>Commerce is disabled or Bitrefill is not configured</b></summary>
 
-## Built versus reused
+The live adapter needs a backend credential and explicit allowlists. Set `BITREFILL_API_KEY`, `ALLOWED_EMAILS`, and any required `ALLOWED_RECIPIENTS` in `.env`, then restart the HTTP server. Obtain an account with zero balance for development. Catalog fixtures are never substituted at runtime.
 
-Lane 1 (rails and guardrails), with a separate Privacy merchant. New code implements the authority, SQLite ledger, policy, dashboard, read-only watcher and adapters. It uses the official MCP Python SDK, Bitrefill MCP, zkool2 `zkool_graphql`, optional Noir browser provider, FastAPI, httpx, jsonschema, TOON decoding and cryptography. Versions are pinned by [uv.lock](uv.lock); wallet release details are in the receipt. No code was copied from the repositories proposed in [the project specification](docs/project-specification.md), so their license/compatibility questions do not block this small implementation.
+</details>
 
-The two official llms.txt briefs are saved intact in [AGENTS.md](AGENTS.md), with separate source copies in [docs/briefs](docs/briefs). [docs/project-specification.md](docs/project-specification.md) is the original design; its broader TypeScript planner and production architecture remain future work.
+<details>
+<summary><b>Approval requires an owner credential</b></summary>
 
-## Next 30 days and submission
+Connect the dashboard session with `OWNER_TOKEN` from the private local configuration. `AGENT_TOKEN` can propose or execute an already approved intent, but cannot grant approval. Review the freshly loaded owner view before approving exact terms.
+
+</details>
+
+<details>
+<summary><b>A purchase is UNCERTAIN or its grant was already used</b></summary>
+
+An interrupted provider write may already have created an invoice. The gateway retains the consumed grant and reserved budget. Reconcile any known invoice with the provider before another attempt; do not clear the ledger or repeat a purchase blindly.
+
+</details>
+
+<details>
+<summary><b>The separate testnet receiver cannot confirm a payment</b></summary>
+
+Verify that the watch-only service is running on the configured loopback `/graphql` endpoint, the account has a Sapling or Ironwood receiver, and its birth height includes the payment. A broadcast is not a confirmed payment. Follow [the testnet guide](docs/zcash-testnet.md) for synchronization, memo, amount, and confirmation checks.
+
+</details>
+
+## Limitations
+
+**Bitrefill live purchase invoice:** not yet created. No Bitrefill developer credential was available. [Public CLI catalog reads](docs/evidence/bitrefill-catalog.json) succeeded; unit fixtures are never used by the runtime. A shielded transfer settles the separate demo resource; it does not pay Bitrefill.
+
+- The application is a single-operator local demo. Public deployment needs normal user sessions, ownership enforcement, process isolation, hardened transport, reorg handling, and retention controls.
+- External agents supply their own model. The broader TypeScript planner and production architecture remain future work.
+- The protected resource uses worthless public-testnet TAZ. It does not settle a Bitrefill invoice.
+- Missing authoritative invoice terms block payment links. Current provider responses must be verified before that parser is relaxed.
+- Public hosting, a demo video, target-user research, and final event submission have not been verified here.
+
+## Roadmap
+
+- [x] Implement deterministic policies, exact owner approval, and signed single-use grants.
+- [x] Add encrypted persistence and independent shielded testnet payment verification.
+- [x] Separate domain, application, infrastructure, and presentation layers.
+
+### Next 30 days and submission
 
 - Complete a credential-backed Bitrefill catalog/invoice/delivery run, record its real invoice ID here and make a 2–3 minute demo video. Neither is claimed yet.
 - Validate missing invoice fields with the Bitrefill team before relaxing a fail-closed parser.
@@ -126,4 +355,48 @@ The two official llms.txt briefs are saved intact in [AGENTS.md](AGENTS.md), wit
 - Extract the reusable memo/confirmation verifier and spend gateway after review. No upstream issue, PR or partner outreach has been created in this session.
 - Write final [FEEDBACK.md](FEEDBACK.md) in the human builder's words. Engineering notes are in [integration notes](docs/integration-notes.md).
 
+### Original submission notes
+
+The following submission status is preserved from the original README. The repository has since been published; public hosting, video, and final submission were not verified during this documentation update.
+
 For this event, finalize and submit on [Stadium](https://stadium.joinwebzero.com/programs/free-society-hack-2026) by **4 November 2026, 20:00 IST** for the first judging round. Drafts are not judged; edits continue until midnight. Public repo publication, public hosting, video and final submission are still pending.
+
+## Documentation
+
+| Guide | What's in it |
+| :--- | :--- |
+| [Architecture](docs/architecture.md) | Dependency rules, interfaces, and module responsibilities. |
+| [Demo guide](docs/demo-guide.md) | Commerce review, private-resource checkout, and honest demo states. |
+| [Zcash testnet](docs/zcash-testnet.md) | Wallet setup, faucet, actual sends, and receiving-wallet verification. |
+| [Environment reference](.env.example) | Required credentials, optional integrations, and default limits. |
+| [Project specification](docs/project-specification.md) | Original design, priorities, and planned production architecture. |
+| [Agent instructions](AGENTS.md) | Project conventions and both original hackathon briefs. |
+| [Official brief copies](docs/briefs) | Preserved Privacy and Agentic Commerce source context. |
+| [Live evidence](docs/evidence) | Public catalog receipt, testnet transactions, and recovery disclosure. |
+| [Integration notes](docs/integration-notes.md) | Observed engineering issues and fixes. |
+| [Feedback](FEEDBACK.md) | Human builder feedback entry point. |
+
+## Contributing
+
+Issues and pull requests are welcome through [GitHub Issues](https://github.com/Dijo-404/pegasus/issues) and [pull requests](https://github.com/Dijo-404/pegasus/pulls). Start with [the architecture guide](docs/architecture.md) and [AGENTS.md](AGENTS.md), keep changes focused, and run the development checks. Add evidence only for actions actually performed; preserve the distinction between an unpaid invoice, delivered goods, and a shielded testnet resource payment.
+
+## Security
+
+Keep API keys, owner credentials, spending keys, seeds, recipient details, and redemption codes out of public issues and pull requests. A dedicated private vulnerability-reporting policy has not been added to this repository; do not publish exploit details or secrets in a public report.
+
+## License
+
+A project license has not yet been specified in this repository. Third-party dependencies retain their own licenses.
+
+## Acknowledgements
+
+- [Bitrefill](https://docs.bitrefill.com/) for the commerce surface.
+- [zkool2](https://github.com/hhanh00/zkool2) and the [Zcash ZIPs](https://zips.z.cash/) for wallet tooling and payment standards.
+- The [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk) for agent integration.
+- [Free Society Hack](https://stadium.joinwebzero.com/programs/free-society-hack-2026) for the source briefs and event context.
+
+<br/>
+
+<div align="center">
+  <sub>Built by <a href="https://github.com/Dijo-404">Dijo-404</a> · <a href="#readme-top">Back to top</a></sub>
+</div>

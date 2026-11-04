@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 132" role="img" aria-labelledby="pegasus-title">
+  <title id="pegasus-title">Pegasus</title>
+  <path fill="#f0effb" d="M0 0H120L103.2 100.32L60 132L16.8 100.32Z"/>
+  <path fill="#26283b" fill-rule="evenodd" d="M39 31H64C82 31 91 40 91 55C91 70 82 79 64 79H51V101H39V31ZM51 43V67H64C74 67 79 63 79 55C79 47 74 43 64 43H51Z"/>
+</svg>
