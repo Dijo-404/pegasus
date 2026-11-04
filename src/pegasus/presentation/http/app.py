@@ -25,7 +25,7 @@ def build_http_app(
     authentication = HttpAuthentication(settings)
     register_middleware(app, settings.http_allowed_hosts)
     register_error_handlers(app)
-    app.include_router(build_system_router(settings))
+    app.include_router(build_system_router(settings, authentication))
     app.include_router(build_commerce_router(commerce, authentication))
     app.include_router(build_private_checkout_router(private_checkout, authentication))
     app.mount("/static", StaticFiles(directory=settings.static_directory, check_dir=False), name="static")

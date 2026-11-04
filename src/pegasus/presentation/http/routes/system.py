@@ -1,12 +1,13 @@
-"""Public health, non-sensitive configuration, and dashboard endpoints."""
+"""Public health, non-sensitive configuration, session role, and dashboard endpoints."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import FileResponse
 
+from ..authentication import HttpAuthentication
 from ..settings import HttpSettings
 
 
-def build_system_router(settings: HttpSettings) -> APIRouter:
+def build_system_router(settings: HttpSettings, authentication: HttpAuthentication) -> APIRouter:
     router = APIRouter()
 
     @router.get("/health")
@@ -29,6 +30,10 @@ def build_system_router(settings: HttpSettings) -> APIRouter:
             "allowed_countries": sorted(settings.allowed_countries),
             "merchant": {"name": "Pegasus private demo resource", "amount_zats": settings.zcash_amount_zats},
         }
+
+    @router.get("/api/session")
+    async def session(role=Depends(authentication.actor)):
+        return {"role": role}
 
     @router.get("/")
     async def index():
