@@ -1,6 +1,6 @@
 # Separate Zcash testnet merchant
 
-This path sells access to VeilAgent's own protected demo resource. It does not settle a Bitrefill invoice. TAZ is worthless public-testnet currency. The merchant releases access only after its own receiving-wallet watcher verifies a mined Sapling or Ironwood note, the order memo, the requested amount, and the configured confirmation threshold.
+This path sells access to Pegasus's own protected demo resource. It does not settle a Bitrefill invoice. TAZ is worthless public-testnet currency. The merchant releases access only after its own receiving-wallet watcher verifies a mined Sapling or Ironwood note, the order memo, the requested amount, and the configured confirmation threshold.
 
 ## Wallet setup
 
@@ -33,16 +33,16 @@ Use fresh databases: `--coin 1` cannot change the network of an existing databas
 Run from the repository root after `uv sync --dev`. Setup creates separate payer and merchant signing accounts, imports only the merchant UFVK into the independent watcher with a birth height ten blocks below setup, and prints account IDs and public addresses. It never requests, prints or persists a seed. The UFVK passes between the two local wallet processes in memory and resides in the watch-only wallet database.
 
 ```sh
-PYTHONPATH=. uv run python scripts/zcash_testnet.py setup
-PYTHONPATH=. uv run python scripts/zcash_testnet.py faucet
-PYTHONPATH=. uv run python scripts/zcash_testnet.py faucet-status
+uv run python scripts/zcash_testnet.py setup
+uv run python scripts/zcash_testnet.py faucet
+uv run python scripts/zcash_testnet.py faucet-status
 ```
 
 `faucet` reserves its attempt before calling the [Fauzec API](https://fauzec.com/.well-known/openapi.json). It never automatically repeats a request after an ambiguous timeout. Poll `faucet-status` until accepted and confirmed; a refusal needs help from a mentor. Then send and detect:
 
 ```sh
-PYTHONPATH=. uv run python scripts/zcash_testnet.py send --amount-zats 100000 --memo VEILAGENT-TESTNET-FIRST-PAYMENT-20261104
-PYTHONPATH=. uv run python scripts/zcash_testnet.py watch --timeout 180
+uv run python scripts/zcash_testnet.py send --amount-zats 100000 --memo PEGASUS-DEMO-PAYMENT-20261104
+uv run python scripts/zcash_testnet.py watch --timeout 180
 ```
 
 The script caps its one send at 100,000 zats (0.001 TAZ), reserves the attempt before broadcasting, and uses Sapling/Ironwood funds only (`srcPools: 10`, the source pool bitmask). It does not override fees; zkool computes them. A returned txid means **broadcast**, not payment completion. `watch` independently synchronizes the watch-only receiving database and verifies mined note-level evidence. If the send fails after the attempt is reserved, inspect and reconcile the wallet instead of clearing the flag blindly.
@@ -71,13 +71,13 @@ No third-party hosted payment processor or language model sees wallet records in
 
 ## Validation
 
-`uv run pytest tests/test_zcash.py` exercises protocol fixtures for wrong memo, amount, scope, pool, unmined state, inadequate confirmations, unsafe endpoints, and decimal precision. These are offline tests. The live evidence section below is populated only after an actual payment is independently observed.
+`uv run pytest tests/unit/infrastructure/test_zcash_client.py` exercises protocol fixtures for wrong memo, amount, scope, pool, unmined state, inadequate confirmations, unsafe endpoints, and decimal precision. These are offline tests. The live evidence section below is populated only after an actual payment is independently observed.
 
 ## Live evidence
 
 On 4 November 2026 the project sent and independently detected **0.001 TAZ** in Ironwood (`pool: 3`) at mined height **4581917**, with at least one confirmation. Transaction: [`d95a809359a47156c20d63eb560dabb99bdc3462d60f23e17689f73f7ffaefe5`](https://zexplorer.app/testnet/tx/d95a809359a47156c20d63eb560dabb99bdc3462d60f23e17689f73f7ffaefe5).
 
-The receiving service used a separate database imported from the merchant's UFVK. It verified the external note, exact memo `VEILAGENT-TESTNET-FIRST-PAYMENT-20261104`, amount and mined height using this repository's `find_payment()` implementation. [Public receipt](evidence/zcash-testnet.json) contains no signing or viewing keys. This proves the wallet adapter's real send/detect path; it does not by itself prove that an application entitlement was issued or a Bitrefill purchase delivered.
+The receiving service used a separate database imported from the merchant's UFVK. The original on-chain memo predates the project rename and remains unchanged. The service verified the external note, exact memo `VEILAGENT-TESTNET-FIRST-PAYMENT-20261104`, amount and mined height using this repository's `find_payment()` implementation. [Public receipt](evidence/zcash-testnet.json) contains no signing or viewing keys. This proves the wallet adapter's real send/detect path; it does not by itself prove that an application entitlement was issued or a Bitrefill purchase delivered.
 
 
 ### Application order and single-use resource

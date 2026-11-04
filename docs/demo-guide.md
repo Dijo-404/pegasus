@@ -1,4 +1,4 @@
-# VeilAgent demo guide
+# Pegasus demo guide
 
 The dashboard uses real provider integrations. Without credentials or a receiving wallet it shows the missing connection and disables the dependent action. It never substitutes a mock catalog, transaction or delivery.
 
@@ -23,7 +23,7 @@ For an adversarial demonstration, use the automated attack tests or call the API
 
 ## Privacy: verify one actual shielded testnet payment
 
-This is an independent Zcash-native merchant. Testnet TAZ does not settle any Bitrefill order. Follow [ZCASH.md](ZCASH.md) to configure a watch-only testnet receiving account and a distinct payer wallet.
+This is an independent Zcash-native merchant. Testnet TAZ does not settle any Bitrefill order. Follow [zcash-testnet.md](zcash-testnet.md) to configure a watch-only testnet receiving account and a distinct payer wallet.
 
 1. Open **Private resource** and create a testnet payment request. The backend returns the actual `utest1` receiving address, amount and unique encrypted order memo.
 2. Use the ZIP 321 wallet link or **Connect & pay with Noir**. Noir must be the separate testnet extension. The wallet computes its own fee and asks the payer to approve a shielded send.

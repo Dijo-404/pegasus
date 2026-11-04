@@ -1,6 +1,8 @@
-# VeilAgent build context
+# Pegasus build context
 
-Both official briefs below were fetched on 2026-11-04. Implement the smallest flow in project.md; keep Bitrefill settlement and the separate Zcash-native merchant distinct. No automatic balance payments in this MVP. Never fabricate live evidence.
+Both official briefs below were fetched on 2026-11-04. Implement the smallest flow in docs/project-specification.md; keep Bitrefill settlement and the separate Zcash-native merchant distinct. No automatic balance payments in this MVP. Never fabricate live evidence.
+
+Source lives under `src/pegasus/`. Keep domain rules and application use cases independent of HTTP, wallet, database, and MCP implementations. Wire adapters in `pegasus.bootstrap`; follow [the architecture guide](docs/architecture.md). Python modules use descriptive snake_case names; documentation uses lowercase hyphenated names except required root files. Project integration notes live in `docs/integration-notes.md`; original filename references in the official briefs below remain as fetched. The copies of the official briefs and recorded payment evidence retain their original content.
 
 # Free Society Hack: Privacy track (Zcash)
 

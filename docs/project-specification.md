@@ -1,4 +1,6 @@
-# VeilAgent
+# Pegasus
+
+This is the original broader proposal, renamed with the project. The implemented Python architecture is documented in [architecture.md](architecture.md); the root [README](../README.md) records current behavior and live evidence. Planned integrations below are not implementation claims.
 
 ## Policy-Bound, Privacy-Aware Agentic Commerce
 
@@ -9,13 +11,13 @@
 **Conditional secondary entry:** Zcash Privacy track **only after implementing and demonstrating a genuine shielded ZEC payment flow**  
 **Project status:** Proposed integration of previously existing components; this document does **not** claim the integrated application has been built or tested.
 
-> **One-sentence pitch:** VeilAgent helps people buy digital goods with AI while making it technically impossible for the language model alone to authorize an unapproved purchase; a future Zcash-native adapter applies the same controls to shielded digital-content payments.
+> **One-sentence pitch:** Pegasus helps people buy digital goods with AI while making it technically impossible for the language model alone to authorize an unapproved purchase; a future Zcash-native adapter applies the same controls to shielded digital-content payments.
 
 ---
 
 ## 1. Executive decision
 
-### Build VeilAgent, not a general-purpose blockchain marketplace
+### Build Pegasus, not a general-purpose blockchain marketplace
 
 Build one narrow, reliable commerce experience:
 
@@ -28,7 +30,7 @@ Build one narrow, reliable commerce experience:
 7. The system reconciles invoice status without calling an unpaid invoice a completed purchase.
 8. An adversarial demo proves that injected instructions, changes to the purchase, and replayed grants cannot authorize side effects.
 
-The **novelty is not AI shopping**: Bitrefill already provides agent-accessible shopping through MCP. VeilAgent addresses a harder question: **how do we give an agent useful financial agency without granting it discretionary financial authority?**
+The **novelty is not AI shopping**: Bitrefill already provides agent-accessible shopping through MCP. Pegasus addresses a harder question: **how do we give an agent useful financial agency without granting it discretionary financial authority?**
 
 ### Decisive innovation
 
@@ -83,7 +85,7 @@ AI shopping agents can translate user intent into purchases, but an unpredictabl
 
 ### Current alternatives and gap
 
-| Existing pattern | What it solves | Residual failure VeilAgent targets |
+| Existing pattern | What it solves | Residual failure Pegasus targets |
 |---|---|---|
 | Bitrefill MCP directly inside an AI client | Product search, invoice creation, invoice lookup | An agent's ability to invoke a purchase tool is not by itself exact-purchase authorization by the user's local policy |
 | Ordinary shopping chatbot + confirmation button | Simple human review | Approval can be vague; a later tool call may differ from the reviewed order if arguments are not cryptographically bound |
@@ -608,47 +610,42 @@ The Bitrefill partner guide describes the official `-syldavia` test products and
 
 ---
 
-## 15. Suggested repository layout
+## 15. Repository layout
+
+The current small implementation uses a Python source layout:
 
 ```text
-veilagent/
-├── README.md                         # user setup + demo limits
-├── PROJECT.md                        # copy of this specification
-├── LICENSE                            # after checking original source licenses
-├── .env.example                       # no live secrets
-├── docker-compose.yml                 # optional; only services needed
-├── apps/
-│   ├── web/                           # React/Next.js purchase UI
-│   ├── planner/                       # IcarusFlow-inspired bounded TS planner
-│   └── authority/                     # Python FastAPI authority/gateway
-├── packages/
-│   ├── purchase-schemas/              # canonical action schemas / versioning
-│   ├── bitrefill-adapter/             # MCP client + provider response parser
-│   ├── price-policy/                  # deterministic spend/region checks
-│   └── audit-projection/              # redacted event serializer
-├── db/
-│   ├── migrations/
-│   └── schema.sql
-├── integrations/
-│   └── zcash-native/                  # P2 only; independent of Bitrefill
+pegasus/
+├── README.md
+├── AGENTS.md
+├── FEEDBACK.md
+├── .env.example
+├── pyproject.toml
+├── uv.lock
+├── src/pegasus/
+│   ├── domain/
+│   ├── application/
+│   ├── infrastructure/
+│   ├── presentation/
+│   └── bootstrap.py
 ├── tests/
 │   ├── unit/
-│   ├── gateway/
-│   ├── attack/
 │   ├── integration/
-│   └── fixtures/
+│   └── test_architecture.py
 ├── scripts/
-│   ├── verify-bitrefill-access.sh
-│   └── demo.sh
+│   ├── setup_environment.py
+│   └── zcash_testnet.py
 └── docs/
-    ├── SOURCE_ATTRIBUTION.md
-    ├── THREAT_MODEL.md
-    ├── DEMO_SCRIPT.md
-    ├── API_CONTRACTS.md
-    └── EVIDENCE_LOG.md
+    ├── architecture.md
+    ├── project-specification.md
+    ├── demo-guide.md
+    ├── zcash-testnet.md
+    ├── integration-notes.md
+    ├── briefs/
+    └── evidence/
 ```
 
-This is a proposed layout, **not** a statement that these files already exist.
+See [architecture.md](architecture.md) for the layer boundaries. The broader TypeScript planner and optional components described elsewhere in this proposal remain future work.
 
 ---
 
@@ -675,7 +672,7 @@ This is a proposed layout, **not** a statement that these files already exist.
 
 ## 17. Competitor comparison — no fabricated performance claims
 
-| Capability | Native Bitrefill MCP usage | Basic agent shopping demo | **VeilAgent target** |
+| Capability | Native Bitrefill MCP usage | Basic agent shopping demo | **Pegasus target** |
 |---|---|---|---|
 | Search genuine Bitrefill products | Yes | Often | **Yes, live** |
 | Create Bitrefill invoice | Yes | Sometimes | **Yes, behind gateway** |
@@ -686,7 +683,7 @@ This is a proposed layout, **not** a statement that these files already exist.
 | Idempotency / uncertain-outcome handling | Provider-dependent | Often skipped | **Explicit state machine and no blind retry** |
 | Truthful paid-vs-unpaid invoice state | MCP supports status tools | Often simplified | **Required provider-derived state** |
 
-**Read correctly:** 'Not established from docs' does **not** mean Bitrefill lacks its own protections. The comparison is about the verified product-level guarantees the VeilAgent **team must demonstrate**, not an allegation that a competitor is insecure.
+**Read correctly:** 'Not established from docs' does **not** mean Bitrefill lacks its own protections. The comparison is about the verified product-level guarantees the Pegasus **team must demonstrate**, not an allegation that a competitor is insecure.
 
 ### Why the other candidates are not the first build
 
@@ -776,7 +773,7 @@ PURCHASES_AUTO_PAY=false
 MAX_INVOICE_ATTEMPTS_PER_INTENT=1
 QUOTE_TTL_SECONDS=300
 GRANT_TTL_SECONDS=90
-DATABASE_URL=sqlite:///./veilagent.db
+DATABASE_URL=sqlite:///./pegasus.db
 AUDIT_REDACT_RECIPIENTS=true
 ZCASH_NATIVE_MERCHANT_ENABLED=false
 ```
@@ -816,7 +813,7 @@ Assume **two to three contributors**; actual availability and roles are [U]. Own
 
 ## 22. Planned 30-day ecosystem milestone (post-hackathon)
 
-**Suggested milestone:** "Add and publish an independently verifiable Zcash-native private digital-content purchase adapter, sharing the VeilAgent approval policy and single-use entitlement model."
+**Suggested milestone:** "Add and publish an independently verifiable Zcash-native private digital-content purchase adapter, sharing the Pegasus approval policy and single-use entitlement model."
 
 Acceptance criteria:
 
@@ -898,6 +895,6 @@ This milestone is **a proposal**, not a prize agreement. It requires an actual e
 
 ## Final decision
 
-**Build VeilAgent's Bitrefill shopping flow with an external deterministic authorization gateway.** The proposal deliberately concentrates technical effort on one difficult, defensible system constraint: an AI may recommend purchases, but it cannot itself possess the authority to spend or change what a user approved.
+**Build Pegasus's Bitrefill shopping flow with an external deterministic authorization gateway.** The proposal deliberately concentrates technical effort on one difficult, defensible system constraint: an AI may recommend purchases, but it cannot itself possess the authority to spend or change what a user approved.
 
-If a **real** shielded Zcash receiving-wallet workflow becomes feasible, extend the same policy-bound purchase engine with a **separate** Zcash-native digital-access merchant (ShadowPass). That would add a genuine privacy function rather than an ornamental chain reference. Until it is implemented, **VeilAgent is a Bitrefill Agentic Commerce submission, not a proven dual-track submission**.
+If a **real** shielded Zcash receiving-wallet workflow becomes feasible, extend the same policy-bound purchase engine with a **separate** Zcash-native digital-access merchant (ShadowPass). That would add a genuine privacy function rather than an ornamental chain reference. Until it is implemented, **Pegasus is a Bitrefill Agentic Commerce submission, not a proven dual-track submission**.
