@@ -164,8 +164,20 @@ async function search() {
     $('search-results').append(button);
   });
 }
+function receiptDestination(product) {
+  const destination = product.receipt_destination;
+  if (!destination || typeof destination !== 'object' || !['email', 'provider_account'].includes(destination.mode)) {
+    throw new Error('The provider receipt destination could not be verified.');
+  }
+  if (destination.mode === 'provider_account' && !/^sha256:[a-f0-9]{64}$/.test(destination.account_reference || '')) {
+    throw new Error('The connected Bitrefill account could not be verified.');
+  }
+  return destination;
+}
 async function selectProduct(id) {
   const product = await api(`/api/catalog/products/${encodeURIComponent(id)}`);
+  const destination = receiptDestination(product);
+  const accountReceipt = destination.mode === 'provider_account';
   state.product = product;
   state.intent = null;
   state.grant = null;
@@ -191,15 +203,24 @@ async function selectProduct(id) {
   $('recipient').hidden = $('recipient-label').hidden = recipientType === 'none';
   $('recipient').required = recipientType !== 'none';
   $('recipient').value = '';
+  $('email').hidden = $('email-label').hidden = accountReceipt;
+  $('email').disabled = accountReceipt;
+  $('email').required = !accountReceipt;
+  $('account-receipt').hidden = !accountReceipt;
+  if (accountReceipt) $('email').value = '';
   if (!product.in_stock) notice('This product is currently out of stock. The gateway will refuse a purchase.', 'error');
   else if (!$('package').options.length || !$('payment-method').options.length) notice('This product has no verified denomination or supported manual payment method.', 'error');
 }
 async function propose() {
   if (!state.product) throw new Error('Select a live product first.');
+  const destination = receiptDestination(state.product);
+  const accountReceipt = destination.mode === 'provider_account';
   const intent = await api('/api/intents', { method: 'POST', body: {
     product_id: state.product.product_id, package_value: $('package').value,
     country: $('country').value, recipient: $('recipient').hidden ? '' : $('recipient').value.trim(),
-    email: $('email').value.trim(), payment_method: $('payment-method').value,
+    email: accountReceipt ? '' : $('email').value.trim(), payment_method: $('payment-method').value,
+    receipt_mode: accountReceipt ? 'provider_account' : 'email',
+    receipt_account_reference: accountReceipt ? destination.account_reference : null,
     max_total_minor: minorUnits($('intent-cap').value),
   } });
   state.grant = null;
@@ -218,7 +239,9 @@ function renderIntent(intent) {
   terms('intent-terms', [
     ['Product', action.product_id], ['Denomination', action.package_value],
     ['Quantity', action.quantity ?? 1], ['Country', action.country],
-    ['Recipient', action.recipient || 'No recipient required'], ['Receipt email', action.email],
+    ['Recipient', action.recipient || 'No recipient required'],
+    ['Receipt destination', action.receipt_mode === 'provider_account' ? 'Connected Bitrefill account' : action.email],
+    ['Account reference', action.receipt_mode === 'provider_account' ? action.receipt_account_reference : null],
     ['Payment method', action.payment_method], ['Your approved maximum', money(action.max_total_minor ?? intent.max_total_minor, action.currency)],
     ['Provider quote', money(action.total_minor, action.currency), 'total'],
     ['Invoice', invoice.invoice_id], ['Provider invoice status', invoice.status],
@@ -260,9 +283,9 @@ async function approve() {
   const reviewedAsOwner = state.ownerReview;
   const fresh = await api(`/api/intents/${encodeURIComponent(previous.id)}`, { owner: true });
   renderIntent(fresh);
-  if (fresh.action?.email === '[owner only]') throw new Error('An owner credential is required to review and approve the exact recipient and email.');
+  if (fresh.action?.email === '[owner only]') throw new Error('An owner credential is required to review and approve the exact recipient and receipt destination.');
   if (!reviewedAsOwner || previous.digest !== fresh.digest || JSON.stringify(previous.action) !== JSON.stringify(fresh.action)) {
-    notice('The owner view is now loaded with the exact recipient and email. Review every term, then click approve again.');
+    notice('The owner view is now loaded with the exact recipient and receipt destination. Review every term, then click approve again.');
     return;
   }
   const result = await api(`/api/intents/${encodeURIComponent(fresh.id)}/approve`, {
