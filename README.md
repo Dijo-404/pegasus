@@ -22,7 +22,7 @@
 <br/>
 
 <p align="center">
-  <img src="docs/assets/demo-light.png" alt="Pegasus dashboard showing purchase budgets, exact approval, and a disconnected Bitrefill provider" width="820" />
+  <img src="docs/assets/demo-light.png" alt="Pegasus dashboard showing the authority boundary, per-purchase and daily caps, and the exact-purchase review panel" width="820" />
 </p>
 
 > [!NOTE]
@@ -271,7 +271,7 @@ The independent privacy flow is **create resource order → ZIP 321 request → 
 
 ### Built versus reused
 
-Lane 1 (rails and guardrails), with a separate Privacy merchant. New code implements the authority, SQLite ledger, policy, dashboard, read-only watcher and adapters. It uses the official MCP Python SDK, Bitrefill MCP, zkool2 `zkool_graphql`, optional Noir browser provider, FastAPI, httpx, jsonschema, TOON decoding and cryptography. Versions are pinned by [uv.lock](uv.lock); wallet release details are in the receipt. No code was copied from the repositories proposed in [the project specification](docs/project-specification.md), so their license/compatibility questions do not block this small implementation.
+Lane 1 (rails and guardrails), with a separate Privacy merchant. New code implements the authority, SQLite ledger, policy, dashboard, read-only watcher and adapters. It uses the official MCP Python SDK, Bitrefill MCP, zkool2 `zkool_graphql`, optional Noir browser provider, FastAPI, httpx, jsonschema, TOON decoding and cryptography. The dashboard self-hosts the Host Grotesk and Departure Mono fonts (SIL Open Font License) and draws its visuals with plain canvas code, so the strict same-origin Content-Security-Policy is unchanged. Versions are pinned by [uv.lock](uv.lock); wallet release details are in the receipt. No code was copied from the repositories proposed in [the project specification](docs/project-specification.md), so their license/compatibility questions do not block this small implementation.
 
 The two official llms.txt briefs are saved intact in [AGENTS.md](AGENTS.md), with separate source copies in [docs/briefs](docs/briefs). [docs/project-specification.md](docs/project-specification.md) is the original design; its broader TypeScript planner and production architecture remain future work.
 
@@ -287,7 +287,7 @@ src/pegasus/
 ├── presentation/
 │   ├── http/            # routes, input schemas, authentication and response views
 │   ├── mcp/             # agent-facing tools
-│   └── web/             # dashboard HTML, JavaScript and styles
+│   └── web/             # dashboard HTML, JavaScript, canvas visuals, styles and fonts
 └── bootstrap.py         # application composition and HTTP app factory
 scripts/                 # local configuration and explicit testnet tooling
 tests/                   # unit, integration and architecture checks
@@ -308,6 +308,7 @@ uv run pytest -q                                # Run all checks in the test sui
 uv run ruff check .                             # Lint Python source
 uv run ruff format --check src tests scripts     # Check Python formatting
 node --check src/pegasus/presentation/web/app.js  # Check dashboard JavaScript
+node --check src/pegasus/presentation/web/visuals.js  # Check dashboard canvas visuals
 ```
 
 ### Verification
@@ -316,6 +317,7 @@ node --check src/pegasus/presentation/web/app.js  # Check dashboard JavaScript
 uv run pytest -q
 uv run ruff check .
 node --check src/pegasus/presentation/web/app.js
+node --check src/pegasus/presentation/web/visuals.js
 ```
 
 Tests exercise tampered/expired/replayed grants, concurrent execution, durable daily caps, recipient and product swaps, ten injection strings, precise money arithmetic, ambiguous writes, status integrity, secret redaction, memo/pool/confirmation checks and entitlement replay. All fixtures are explicit test doubles. Real testnet evidence lives separately in `docs/evidence/`.
