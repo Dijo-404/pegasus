@@ -97,11 +97,11 @@ uv run python scripts/setup_environment.py  # Create private local credentials w
 uv run uvicorn pegasus.bootstrap:create_app --factory --host 127.0.0.1 --port 8787  # Start the dashboard and trusted gateway on loopback
 ```
 
-Open <http://127.0.0.1:8787>. Open the private `.env` locally and paste **OWNER_TOKEN** into the dashboard's session control. Bootstrap creates random credentials with mode 0600, does not print them, and never overwrites an existing `.env`.
+Open <http://127.0.0.1:8787>. Open the private `.env` locally and use **Sign in** to paste **OWNER_TOKEN**; the gateway confirms whether it is the owner or agent token. Bootstrap creates random credentials with mode 0600, does not print them, and never overwrites an existing `.env`.
 
 ### Public testnet demo
 
-Open <https://notified-accountability-requirement-taste.trycloudflare.com>. Protected actions require the existing private owner/agent credential, entered in Session settings. This temporary HTTPS tunnel depends on the operator's machine and wallet processes remaining online; its hostname changes when a new tunnel is created. [Deployment and verification guide](docs/deployment.md) includes service controls and the explicit live-test command.
+Open <https://notified-accountability-requirement-taste.trycloudflare.com>. Protected actions require the existing private owner/agent credential, entered through **Sign in**. This temporary HTTPS tunnel depends on the operator's machine and wallet processes remaining online; its hostname changes when a new tunnel is created. [Deployment and verification guide](docs/deployment.md) includes service controls and the explicit live-test command.
 
 ## Usage
 
