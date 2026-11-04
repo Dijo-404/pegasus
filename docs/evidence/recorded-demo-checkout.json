@@ -1,0 +1,43 @@
+{
+  "network": "zcash-public-testnet",
+  "recorded_at": "2026-11-04T14:54:14.082Z",
+  "verified_at": "2026-11-04T14:55:32.171Z",
+  "source_url": "http://127.0.0.1:8787",
+  "order_id": "zo_c2226cdd165344d1ad06333210b44994",
+  "memo": "PEGASUS-9a8c2f2554fb4573a01b9eb25d8f6d0a",
+  "amount_zats": 100000,
+  "recipient": "utest1dswv9aae85nfrhen3jt9jt6ppm7ch6mdgkcu0ds4sdg72ts5sqx575xlsasq9e9mrugsea2xl32w7mp50fzj29q9g6cfx97d727ufxx6d5eqlt90vyuccw4wtf0djl22eg6e00x7jfll6suv59ulgwu7s2n5ydlsmp380cjjxuzv6ryw",
+  "birth_height": 4581901,
+  "broadcast_at": "2026-11-04T14:54:38.184303+00:00",
+  "receipt": {
+    "txid": "5e0179d3ca9ea1be3835a0eadb92ade8244fb4e5f25f8c647c3e74aff0e47929",
+    "height": 4582394,
+    "confirmations": 1,
+    "amount_zats": 100000,
+    "pool": 3
+  },
+  "explorer_url": "https://zexplorer.app/testnet/tx/5e0179d3ca9ea1be3835a0eadb92ade8244fb4e5f25f8c647c3e74aff0e47929",
+  "early_access": {
+    "redeem_button_hidden_while_unpaid": true
+  },
+  "redemption": {
+    "http_status": 200,
+    "resource_returned": true,
+    "observed_at": "2026-11-04T14:55:23.501Z"
+  },
+  "replay": {
+    "http_status": 409,
+    "code": "NOT_REDEEMABLE"
+  },
+  "lightwallet_server": "https://testnet.zec.rocks:443",
+  "recording": {
+    "viewport": {
+      "width": 1440,
+      "height": 1080
+    },
+    "real_ui": true,
+    "manual_local_payer_step": true,
+    "mining_wait_seconds": 40.102
+  },
+  "disclosure": "Actual running UI and one fresh shielded public-testnet payment. Noir was not installed; the disposable local payer wallet sent 0.001 TAZ manually through the loopback signing service with the API-created order memo. The independent receiving watch-only service verified the exact mined note. No Noir approval popup or Bitrefill purchase was performed. Mining wait may be shortened in the edited video, which must be labeled. Public explorers do not reveal shielded amount or memo. No spending/viewing keys or bearer tokens are included."
+}
