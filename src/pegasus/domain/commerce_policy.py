@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
+import re
 
 from .exceptions import Denied
 
@@ -56,6 +57,42 @@ def minor_units(value, currency):
         raise Denied("INVALID_PRICE", "Provider price must be a positive exact USD cent amount.") from None
 
 
+ACCOUNT_REFERENCE_RE = re.compile(r"^sha256:[a-f0-9]{64}$")
+
+
+def validate_receipt(request, details, settings):
+    mode = request.get("receipt_mode", "email")
+    if not isinstance(mode, str) or mode not in {"email", "provider_account"}:
+        raise Denied("RECEIPT_MODE_DENIED", "Receipt mode must be email or the connected provider account.")
+    destination = details.get("receipt_destination", {"mode": "email"})
+    if (
+        not isinstance(destination, dict)
+        or not isinstance(destination.get("mode"), str)
+        or destination["mode"] not in {"email", "provider_account"}
+    ):
+        raise Denied("RECEIPT_UNVERIFIED", "Provider receipt destination could not be verified.")
+    if mode != destination["mode"]:
+        raise Denied("RECEIPT_MODE_MISMATCH", "Provider receipt mode changed. Create and approve a fresh intent.")
+    email = request.get("email", "")
+    reference = request.get("receipt_account_reference")
+    if mode == "email":
+        if reference is not None:
+            raise Denied("RECEIPT_ACCOUNT_UNEXPECTED", "An email receipt cannot select a provider account.")
+        if not email or email not in settings.allowed_emails:
+            raise Denied("EMAIL_DENIED", "Receipt email is outside the local allowlist.")
+        return {}
+    trusted_reference = destination.get("account_reference")
+    if not isinstance(trusted_reference, str) or not ACCOUNT_REFERENCE_RE.fullmatch(trusted_reference):
+        raise Denied("RECEIPT_UNVERIFIED", "Provider receipt account could not be verified.")
+    if not isinstance(reference, str) or reference != trusted_reference:
+        raise Denied(
+            "RECEIPT_ACCOUNT_MISMATCH", "Connected receipt account changed. Create and approve a fresh intent."
+        )
+    if email != "":
+        raise Denied("RECEIPT_EMAIL_UNEXPECTED", "Connected-account receipts require an empty email field.")
+    return {"receipt_mode": mode, "receipt_account_reference": reference}
+
+
 def validate_quote(request, details, settings):
     if request["product_id"] not in settings.allowed_products:
         raise Denied("PRODUCT_DENIED", "Product is outside the local allowlist.")
@@ -78,8 +115,7 @@ def validate_quote(request, details, settings):
     maximum = request["max_total_minor"]
     if total > maximum or maximum > settings.max_purchase_minor:
         raise Denied("PURCHASE_CAP", "Quoted price or approved maximum exceeds the spend cap.")
-    if request["email"] not in settings.allowed_emails:
-        raise Denied("EMAIL_DENIED", "Receipt email is outside the local allowlist.")
+    receipt = validate_receipt(request, details, settings)
     kind = details.get("recipient_type")
     recipient = request.get("recipient", "")
     if kind not in {"none", "phone_number", "account", "email", "username"}:
@@ -98,11 +134,12 @@ def validate_quote(request, details, settings):
         "country": country,
         "recipient_type": kind,
         "recipient": recipient,
-        "email": request["email"],
+        "email": request.get("email", ""),
         "payment_method": method,
         "currency": currency,
         "total_minor": total,
         "max_total_minor": maximum,
+        **receipt,
     }
 
 
@@ -117,9 +154,22 @@ def invoice_verified(invoice, action):
                 "recipient": action["recipient"],
             }
         ],
-        "email": action["email"],
         "payment_method": action["payment_method"],
     }
+    receipt_mode = action.get("receipt_mode", "email")
+    if receipt_mode == "provider_account":
+        reference = action.get("receipt_account_reference")
+        if (
+            action["email"] != ""
+            or not isinstance(reference, str)
+            or not ACCOUNT_REFERENCE_RE.fullmatch(reference)
+        ):
+            return False
+        expected["receipt_destination"] = {"mode": "provider_account", "account_reference": reference}
+    elif receipt_mode == "email" and action.get("receipt_account_reference") is None:
+        expected["email"] = action["email"]
+    else:
+        return False
     return (
         type(total) is int
         and 0 < total <= action["max_total_minor"]

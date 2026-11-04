@@ -1,5 +1,7 @@
 """Validated HTTP request bodies. Domain policies remain in the application."""
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -12,7 +14,9 @@ class PurchaseProposalRequest(EmptyRequest):
     package_value: str = Field(min_length=1, max_length=120)
     country: str = Field(pattern=r"^[A-Z]{2}$")
     recipient: str = Field(default="", max_length=254)
-    email: str = Field(min_length=3, max_length=254, pattern=r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+    email: str = Field(max_length=254, pattern=r"^(?:|[^\s@]+@[^\s@]+\.[^\s@]+)$")
+    receipt_mode: Literal["email", "provider_account"] = "email"
+    receipt_account_reference: str | None = Field(default=None, pattern=r"^sha256:[a-f0-9]{64}$")
     payment_method: str = Field(max_length=40)
     max_total_minor: int = Field(gt=0, le=100000)
 

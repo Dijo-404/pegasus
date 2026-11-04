@@ -3,6 +3,7 @@
 from contextlib import asynccontextmanager
 from copy import deepcopy
 from types import SimpleNamespace
+import hashlib
 import json
 
 import httpx
@@ -80,11 +81,12 @@ ACTION = {
 
 
 class FakeSession:
-    def __init__(self, response, *, schemas=None, format="json", error=None):
+    def __init__(self, response, *, schemas=None, format="json", error=None, is_error=False):
         self.response = response
         self.schemas = deepcopy(schemas or SCHEMAS)
         self.format = format
         self.error = error
+        self.is_error = is_error
         self.calls = []
 
     async def list_tools(self, cursor=None):
@@ -97,10 +99,10 @@ class FakeSession:
         if self.error:
             raise self.error
         if self.format == "structured":
-            return SimpleNamespace(isError=False, structuredContent=self.response, content=[])
+            return SimpleNamespace(isError=self.is_error, structuredContent=self.response, content=[])
         payload = json.dumps(self.response) if self.format == "json" else toon_format.dumps(self.response)
         return SimpleNamespace(
-            isError=False, structuredContent=None, content=[SimpleNamespace(type="text", text=payload)]
+            isError=self.is_error, structuredContent=None, content=[SimpleNamespace(type="text", text=payload)]
         )
 
 
@@ -123,6 +125,7 @@ async def test_live_formats_normalize_without_descriptions_or_balance(format):
     assert result["countries"] == ["IN"]
     assert result["packages"][0]["payment_price"] == "0.11"
     assert result["payment_methods"] == ["lightning", "usdc_base"]
+    assert result["receipt_destination"] == {"mode": "email"}
     assert "attacker" not in json.dumps(result)
     assert session.calls == [("get-product-details", {"product_id": "airtel-india", "currency": "USD"})]
 
@@ -358,3 +361,213 @@ async def test_no_configuration_is_explicit_not_a_mock_catalog():
     with pytest.raises(ProviderError) as error:
         await BitrefillClient("").details("airtel-india")
     assert error.value.code == "BITREFILL_NOT_CONFIGURED"
+
+
+def account_schemas():
+    schemas = deepcopy(SCHEMAS)
+    checkout = schemas["buy-products"]
+    checkout["properties"].pop("email")
+    checkout["required"].remove("email")
+    return schemas
+
+
+def account_destination(key="CANARY_API_SECRET"):
+    return {
+        "mode": "provider_account",
+        "account_reference": "sha256:" + hashlib.sha256(("bitrefill:" + key).encode()).hexdigest(),
+    }
+
+
+def account_action(**overrides):
+    return {
+        **ACTION,
+        "email": "",
+        "receipt_mode": "provider_account",
+        "receipt_account_reference": account_destination()["account_reference"],
+        **overrides,
+    }
+
+
+@pytest.mark.asyncio
+async def test_account_catalog_exposes_explicit_credential_binding_without_email_or_key():
+    session = FakeSession(PRODUCT, schemas=account_schemas())
+    details = await client_for(session).details("airtel-india")
+    assert details["receipt_destination"] == account_destination()
+    assert "CANARY_API_SECRET" not in json.dumps(details)
+    assert "email" not in details["receipt_destination"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("field", ["cart_items", "payment_method"])
+async def test_catalog_requires_live_checkout_authority_schema(field):
+    schemas = account_schemas()
+    schemas["buy-products"]["properties"].pop(field)
+    session = FakeSession(PRODUCT, schemas=schemas)
+    with pytest.raises(ProviderError) as error:
+        await client_for(session).details("airtel-india")
+    assert error.value.code == "PROVIDER_SCHEMA"
+    assert all(name != "buy-products" for name, _ in session.calls)
+
+
+@pytest.mark.asyncio
+async def test_account_checkout_omits_email_and_uses_fresh_schema_context():
+    raw = invoice_with_terms()
+    raw.pop("email")
+    # Provider-supplied metadata is not an authority for the account binding.
+    raw["receipt_destination"] = account_destination("ANOTHER_SYNTHETIC_CREDENTIAL")
+    session = FakeSession(raw, schemas=account_schemas())
+    invoice = await client_for(session).create_invoice(account_action())
+    assert len(session.calls) == 1
+    name, arguments = session.calls[0]
+    assert name == "buy-products"
+    assert arguments["payment_method"] == "lightning"
+    assert arguments["cart_items"][0]["refill_input"] == ACTION["recipient"]
+    assert "email" not in arguments
+    terms = invoice["verified_terms"]
+    assert terms["receipt_destination"] == account_destination()
+    assert "email" not in terms
+    assert invoice["total_minor"] == 11
+    assert invoice["currency"] == "USD"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"receipt_account_reference": "sha256:" + "0" * 64},
+        {"receipt_account_reference": ""},
+        {"receipt_mode": "email"},
+        {"receipt_mode": "other"},
+        {"email": "buyer@example.invalid"},
+    ],
+)
+async def test_account_checkout_rejects_unapproved_receipt_terms_before_provider_write(overrides):
+    session = FakeSession({}, schemas=account_schemas())
+    with pytest.raises(ProviderError) as error:
+        await client_for(session).create_invoice(account_action(**overrides))
+    assert error.value.code == "RECEIPT_DESTINATION_CHANGED"
+    assert session.calls == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("changed_to_account", [True, False])
+async def test_receipt_schema_mode_change_stops_before_provider_write(changed_to_account):
+    schemas = account_schemas() if changed_to_account else SCHEMAS
+    action = ACTION if changed_to_account else account_action()
+    session = FakeSession({}, schemas=schemas)
+    with pytest.raises(ProviderError) as error:
+        await client_for(session).create_invoice(action)
+    assert error.value.code == "RECEIPT_DESTINATION_CHANGED"
+    assert session.calls == []
+
+
+@pytest.mark.asyncio
+async def test_changed_credential_requires_a_new_account_approval():
+    session = FakeSession(PRODUCT, schemas=account_schemas())
+    client = client_for(session)
+    destination = (await client.details("airtel-india"))["receipt_destination"]
+    action = account_action(receipt_account_reference=destination["account_reference"])
+    client._api_key = "ANOTHER_SYNTHETIC_CREDENTIAL"
+    session.calls.clear()
+    with pytest.raises(ProviderError) as error:
+        await client.create_invoice(action)
+    assert error.value.code == "RECEIPT_DESTINATION_CHANGED"
+    assert session.calls == []
+
+
+@pytest.mark.asyncio
+async def test_account_poll_uses_authenticated_context_and_redacts_delivered_codes():
+    raw = invoice_with_terms(
+        invoice_status="complete",
+        orders=[
+            {
+                "id": "order-1",
+                "status": "delivered",
+                "redemption_info": {"code": "CANARY_DELIVERED_CODE", "pin": "CANARY_PIN"},
+                "access_link": "https://www.bitrefill.com/order/CANARY_ACCESS_TOKEN",
+            }
+        ],
+    )
+    raw.pop("email")
+    session = FakeSession(raw, schemas=account_schemas())
+    invoice = await client_for(session).invoice("invoice-1")
+    assert invoice["orders"] == [{"id": "order-1", "status": "delivered"}]
+    assert invoice["verified_terms"]["receipt_destination"] == account_destination()
+    assert session.calls == [("get-invoice-by-id", {"invoice_id": "invoice-1"})]
+    assert "CANARY" not in json.dumps(invoice)
+
+
+@pytest.mark.parametrize("field", ["cart_items", "payment_method"])
+def test_account_context_cannot_replace_missing_authoritative_invoice_terms(field):
+    raw = invoice_with_terms()
+    raw.pop("email")
+    raw.pop(field)
+    assert normalize_invoice(raw, receipt_destination=account_destination())["verified_terms"] is None
+
+
+def test_account_context_cannot_replace_invoice_amount_or_denomination():
+    raw = invoice_with_terms()
+    raw.pop("email")
+    raw.pop("payment_price")
+    raw["cart_items"][0].pop("package_value")
+    invoice = normalize_invoice(raw, receipt_destination=account_destination())
+    assert invoice["total_minor"] is None
+    assert invoice["currency"] is None
+    assert invoice["verified_terms"] is None
+
+
+def test_untrusted_invoice_account_claim_does_not_bypass_guest_email_requirement():
+    raw = invoice_with_terms(receipt_destination=account_destination())
+    raw.pop("email")
+    assert normalize_invoice(raw)["verified_terms"] is None
+
+
+@pytest.mark.asyncio
+async def test_nested_safe_provider_rejection_is_not_retried_or_exposed():
+    safe = ProviderError("PROVIDER_REJECTED", "Bitrefill rejected the request; no automatic retry was made.")
+    session = FakeSession({}, error=ExceptionGroup("CANARY_TRANSPORT_PAYLOAD", [safe]))
+    with pytest.raises(ProviderError) as error:
+        await client_for(session).details("airtel-india")
+    assert error.value is safe
+    assert len(session.calls) == 1
+    assert "CANARY" not in str(error.value)
+
+
+@pytest.mark.asyncio
+async def test_tool_error_decodes_after_transport_exit_without_retry():
+    session = FakeSession({"error": "product_not_found CANARY_API_SECRET"}, is_error=True)
+    client = client_for(session)
+
+    @asynccontextmanager
+    async def grouping_transport():
+        try:
+            yield session
+        except Exception as error:
+            raise ExceptionGroup("CANARY_TRANSPORT_PAYLOAD", [error]) from None
+
+    client._session = grouping_transport
+    with pytest.raises(ProviderError) as error:
+        await client.details("airtel-india")
+    assert error.value.code == "PROVIDER_REJECTED"
+    assert len(session.calls) == 1
+    assert "CANARY" not in str(error.value)
+
+
+@pytest.mark.asyncio
+async def test_nested_schema_error_before_write_preserves_safe_code():
+    session = FakeSession({}, schemas=account_schemas())
+    client = client_for(session)
+
+    @asynccontextmanager
+    async def grouping_transport():
+        try:
+            yield session
+        except Exception as error:
+            raise ExceptionGroup("CANARY_TRANSPORT_PAYLOAD", [error]) from None
+
+    client._session = grouping_transport
+    with pytest.raises(ProviderError) as error:
+        await client.create_invoice(ACTION)
+    assert error.value.code == "RECEIPT_DESTINATION_CHANGED"
+    assert session.calls == []
+    assert "CANARY" not in str(error.value)
