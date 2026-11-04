@@ -8,6 +8,7 @@ from pathlib import Path
 class HttpSettings:
     owner_token: str
     agent_token: str
+    http_allowed_hosts: frozenset[str]
     bitrefill_configured: bool
     zcash_configured: bool
     max_purchase_minor: int

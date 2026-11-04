@@ -1,5 +1,7 @@
 from dataclasses import dataclass, field
+import ipaddress
 import os
+import re
 
 from cryptography.fernet import Fernet
 from dotenv import load_dotenv
@@ -12,12 +14,27 @@ def csv(value: str) -> frozenset[str]:
     return frozenset(part.strip() for part in value.split(",") if part.strip())
 
 
+def valid_http_host(host: str) -> bool:
+    """Allow explicit DNS names and IP literals, never schemes, ports or wildcards."""
+    if not isinstance(host, str) or not host or host != host.lower() or len(host) > 253:
+        return False
+    if host.startswith("[") and host.endswith("]"):
+        try:
+            return isinstance(ipaddress.ip_address(host[1:-1]), ipaddress.IPv6Address)
+        except ValueError:
+            return False
+    return all(re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", label) for label in host.split("."))
+
+
 @dataclass(frozen=True)
 class Settings:
     owner_token: str
     agent_token: str
     grant_secret: str
     data_key: str
+    http_allowed_hosts: frozenset[str] = field(
+        default_factory=lambda: csv("localhost,127.0.0.1,[::1],testserver")
+    )
     database_path: str = ".local/pegasus.db"
     bitrefill_api_key: str = ""
     max_purchase_minor: int = 500
@@ -42,6 +59,8 @@ class Settings:
                 )
         if self.owner_token == self.agent_token:
             raise ValueError("Owner and agent tokens must be different")
+        if not self.http_allowed_hosts or not all(valid_http_host(host) for host in self.http_allowed_hosts):
+            raise ValueError("HTTP_ALLOWED_HOSTS must list explicit lowercase hostnames or IP addresses")
         Fernet(self.data_key.encode())
         if (
             min(
@@ -76,7 +95,7 @@ class Settings:
             value = os.environ.get(name.upper())
             if value is None:
                 continue
-            if name.startswith("allowed_"):
+            if name.startswith("allowed_") or name == "http_allowed_hosts":
                 values[name] = csv(value)
             elif info.type is int:
                 values[name] = int(value)

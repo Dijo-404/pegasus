@@ -38,6 +38,7 @@ def create_app(
     http_settings = HttpSettings(
         owner_token=settings.owner_token,
         agent_token=settings.agent_token,
+        http_allowed_hosts=settings.http_allowed_hosts,
         bitrefill_configured=bool(settings.bitrefill_api_key),
         zcash_configured=settings.zcash_enabled,
         max_purchase_minor=settings.max_purchase_minor,
