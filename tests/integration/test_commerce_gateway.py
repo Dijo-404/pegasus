@@ -364,6 +364,50 @@ def test_body_limit_without_content_length(setup):
         assert response.status_code == 413
 
 
+def test_explicit_public_host_keeps_https_origin_and_authentication_boundaries(setup):
+    settings, _, _, provider = setup
+    settings = replace(settings, http_allowed_hosts=frozenset({"checkout.example.invalid"}))
+    app = create_app(settings, provider=provider, zcash=FakeZcash())
+    origin = "https://checkout.example.invalid"
+    headers = {"Authorization": "Bearer " + settings.owner_token, "Origin": origin}
+    with TestClient(app, base_url=origin) as client:
+        assert client.get("/health").status_code == 200
+        assert client.get("/api/intents").status_code == 401
+        response = client.post("/api/private/orders", json={}, headers=headers)
+        assert response.status_code == 200
+        assert response.json()["status"] == "AWAITING_PAYMENT"
+        assert response.headers["Cache-Control"] == "no-store"
+        foreign = client.post(
+            "/api/private/orders", json={}, headers={**headers, "Origin": "https://foreign.example.invalid"}
+        )
+        assert foreign.status_code == 403
+        assert foreign.json()["error"]["code"] == "ORIGIN_DENIED"
+        assert client.get("/health", headers={"Host": "untrusted.example.invalid"}).status_code == 400
+
+
+def test_default_host_allowlist_rejects_public_hosts(setup):
+    settings, _, _, provider = setup
+    app = create_app(settings, provider=provider, zcash=FakeZcash())
+    with TestClient(app, base_url="https://checkout.example.invalid") as client:
+        assert client.get("/health").status_code == 400
+
+
+@pytest.mark.parametrize(
+    "hosts",
+    [
+        frozenset(),
+        frozenset({"*"}),
+        frozenset({"*.example.invalid"}),
+        frozenset({"https://checkout.example.invalid"}),
+        frozenset({"checkout.example.invalid:443"}),
+    ],
+)
+def test_http_host_configuration_rejects_unsafe_values(setup, hosts):
+    settings, _, _, _ = setup
+    with pytest.raises(ValueError, match="HTTP_ALLOWED_HOSTS"):
+        replace(settings, http_allowed_hosts=hosts)
+
+
 def test_api_authority_boundaries_and_private_entitlement(setup):
     settings, _, _, provider = setup
     zcash = FakeZcash()

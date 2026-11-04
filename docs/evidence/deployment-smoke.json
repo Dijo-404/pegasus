@@ -1,0 +1,65 @@
+{
+  "verified_at": "2026-11-04T12:38:57.436236+00:00",
+  "public_url": "https://notified-accountability-requirement-taste.trycloudflare.com",
+  "checks": {
+    "/health": {
+      "http_status": 200,
+      "cache_control": "no-store"
+    },
+    "/": {
+      "http_status": 200,
+      "cache_control": "no-store"
+    },
+    "/static/app.js": {
+      "http_status": 200,
+      "cache_control": "no-store"
+    },
+    "/static/styles.css": {
+      "http_status": 200,
+      "cache_control": "no-store"
+    },
+    "/api/config": {
+      "http_status": 200,
+      "cache_control": "no-store"
+    },
+    "restart_persisted_order": {
+      "http_status": 200,
+      "status": "REDEEMED"
+    },
+    "restart_replay": {
+      "http_status": 409,
+      "code": "NOT_REDEEMABLE"
+    },
+    "unknown_host": {
+      "http_status": 400
+    },
+    "loopback_listeners": {
+      "ports": [
+        8000,
+        8001,
+        8787
+      ],
+      "address": "127.0.0.1",
+      "observation": "ss -ltnp; external reachability was not independently port-scanned"
+    }
+  },
+  "services": {
+    "pegasus-demo-http.service": "active",
+    "pegasus-demo-tunnel.service": "active"
+  },
+  "browser": {
+    "engine": "Playwright Chromium",
+    "title": "Pegasus \u00b7 Intent before execution",
+    "javascript_errors": [],
+    "private_tab_visible": true,
+    "horizontal_overflow": false,
+    "provider_status": "Not connected",
+    "screenshot_private": ".local/deployment/public-demo.png"
+  },
+  "automated_validation": {
+    "pytest_passed": 149,
+    "ruff": "passed",
+    "javascript_syntax": "passed"
+  },
+  "notes": "Application was restarted with its existing DATA_KEY and encrypted database. No additional payment was sent. Bitrefill developer key is not configured."
+}

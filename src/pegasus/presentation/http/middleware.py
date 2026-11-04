@@ -1,4 +1,4 @@
-"""Local browser boundary, bounded request bodies, and response security headers."""
+"""Explicit host and browser boundaries, bounded bodies, and security headers."""
 
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
@@ -7,8 +7,8 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 MAX_BODY_BYTES = 16384
 
 
-def register_middleware(app: FastAPI) -> None:
-    app.add_middleware(TrustedHostMiddleware, allowed_hosts=["localhost", "127.0.0.1", "[::1]", "testserver"])
+def register_middleware(app: FastAPI, allowed_hosts: frozenset[str]) -> None:
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=sorted(allowed_hosts), www_redirect=False)
 
     @app.middleware("http")
     async def browser_boundary(request, call_next):

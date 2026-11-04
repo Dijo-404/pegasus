@@ -99,6 +99,10 @@ uv run uvicorn pegasus.bootstrap:create_app --factory --host 127.0.0.1 --port 87
 
 Open <http://127.0.0.1:8787>. Open the private `.env` locally and paste **OWNER_TOKEN** into the dashboard's session control. Bootstrap creates random credentials with mode 0600, does not print them, and never overwrites an existing `.env`.
 
+### Public testnet demo
+
+Open <https://notified-accountability-requirement-taste.trycloudflare.com>. Protected actions require the existing private owner/agent credential, entered in Session settings. This temporary HTTPS tunnel depends on the operator's machine and wallet processes remaining online; its hostname changes when a new tunnel is created. [Deployment and verification guide](docs/deployment.md) includes service controls and the explicit live-test command.
+
 ## Usage
 
 ### Commands
@@ -109,6 +113,7 @@ Open <http://127.0.0.1:8787>. Open the private `.env` locally and paste **OWNER_
 | `uv run uvicorn pegasus.bootstrap:create_app --factory --host 127.0.0.1 --port 8787` | Start the dashboard and trusted HTTP gateway. |
 | `uv run python -m pegasus.presentation.mcp.server` | Start the agent-facing stdio MCP server with `AGENT_TOKEN` supplied separately. |
 | `uv run python scripts/zcash_testnet.py --help` | Show the explicit testnet wallet setup, faucet, send, and watch commands. |
+| `uv run python scripts/verify_testnet_deployment.py --base-url <public-https-origin>` | Explicitly send one capped testnet payment and verify the deployed private checkout; resume using the same state file. |
 | `uv run pytest -q` | Run unit, integration, security, and architecture checks. |
 
 ### Examples
@@ -139,11 +144,13 @@ Tools: `search_products`, `product_details`, `propose_purchase`, `execute_approv
 
 ### Live payment evidence
 
+The public HTTPS demo completed a fresh, uninterrupted checkout on **4 November 2026**: **0.001 TAZ**, Ironwood, mined at height **4582071**, verified at **one confirmation**. Transaction: [`c1d1319c62a1cca8c61502e9e27be92a72168e962de8d92831a09cfb91d45c7a`](https://zexplorer.app/testnet/tx/c1d1319c62a1cca8c61502e9e27be92a72168e962de8d92831a09cfb91d45c7a). The deployed API denied unpaid access, confirmed the exact order payment through the watch-only receiver, returned the resource once, and rejected replay with HTTP 409. Redeemed state and replay rejection survived an application restart. [Checkout receipt](docs/evidence/deployed-testnet-checkout.json) · [Deployment checks](docs/evidence/deployment-smoke.json).
+
 **Live evidence:** an independently verified shielded public-testnet payment of **0.001 TAZ**, Ironwood pool, mined at height **4581917**:
 [`d95a809359a47156c20d63eb560dabb99bdc3462d60f23e17689f73f7ffaefe5`](https://zexplorer.app/testnet/tx/d95a809359a47156c20d63eb560dabb99bdc3462d60f23e17689f73f7ffaefe5).
 The receipt from the project's own watch-only verifier is in [docs/evidence/zcash-testnet.json](docs/evidence/zcash-testnet.json). The explorer does not reveal shielded amount or memo; those facts came from the receiver's authorized wallet.
 
-The separate API order also received a real 0.001 TAZ transfer, verified five confirmations, released its resource, and rejected a second redemption with HTTP 409. [Full API evidence](docs/evidence/private-merchant-e2e.json) records the test interruption and recovery: the original order fields were restored after a temporary test process lost its ephemeral encryption key. No payment was resent during recovery, and this is not claimed as an uninterrupted run.
+An earlier separate API order also received a real 0.001 TAZ transfer, verified five confirmations, released its resource, and rejected a second redemption with HTTP 409. [Earlier API evidence](docs/evidence/private-merchant-e2e.json) records that test's interruption and recovery: the original order fields were restored after a temporary test process lost its ephemeral encryption key. No payment was resent during recovery, and that earlier run is not claimed as uninterrupted.
 
 ## Configuration
 
@@ -174,6 +181,7 @@ The Zcash path uses a local watch-only `zkool_graphql` account. Set `ZCASH_ENABL
 | `GRANT_SECRET` | Sign and verify short-lived execution grants in the trusted backend. |
 | `DATA_KEY` | Fernet key for encrypted local order and provider-token records. |
 | `DATABASE_PATH` | SQLite location; defaults to `.local/pegasus.db`. |
+| `HTTP_ALLOWED_HOSTS` | Explicit lowercase HTTP hostnames/IPs; loopback defaults, no wildcards. The HTTPS deployment supplies its exact public hostname. |
 | `BITREFILL_API_KEY` | Backend-only credential for live commerce; empty disables those calls. |
 | `MAX_PURCHASE_MINOR` / `MAX_DAILY_MINOR` | USD cent ceilings; defaults `500` / `1000`. |
 | `ALLOWED_PRODUCTS` / `ALLOWED_COUNTRIES` | Explicit product IDs and country codes. |
@@ -191,6 +199,7 @@ The Zcash path uses a local watch-only `zkool_graphql` account. Set `ZCASH_ENABL
 | `.venv/` | Locked Python project and development dependencies. |
 | `.local/pegasus.db` | Encrypted order records plus the grant, reservation, and audit ledger. |
 | `.local/zcash/` | Disposable testnet wallet databases and explicit wallet-tool state, when that setup is used. |
+| `.local/deployment/` | Private temporary-host configuration, URL state, and HTTP/tunnel logs. |
 | `.local/backups/pre-rename.db` | Private original database retained during the Pegasus rename, when present. |
 | `~/.zcash-params/` | Sapling parameters downloaded by the wallet tool on first start. |
 
@@ -200,8 +209,8 @@ Private environment, wallet, database, and runtime files are ignored by git.
 
 1. **Shielded on-chain:** the separate merchant payment uses Ironwood/Sapling notes. Its amount and memo are visible to the receiver's viewing key, not the public explorer. Bitrefill commerce has no Zcash privacy claim.
 2. **App storage:** purchase fields, recipients, private orders and provider access tokens are Fernet-encrypted at rest. Intent IDs, digests, states, timestamps, grant consumption and budget reservations remain plaintext. Audit events contain reason codes, not recipients or codes. The operator holds the encryption key in local `.env` and can decrypt records.
-3. **Other parties:** `testnet.zec.rocks` sees wallet IP and sync timing. Fauzec sees the payer address and request IP. Bitrefill sees its account, purchase, receipt email and recipient. The watch-only service can see the receiving account's whole history but cannot spend. No CipherPay or Nym service is used. No LLM provider receives data from this app; any external agent's provider sees the tool calls you send it.
-4. **Trust and next fixes:** trust the local operator, wallet software, light-wallet server, provider and their reported chain/order state. Loopback binding, separate owner/agent credentials and no CORS serve a **single-operator local demo**. A compromised local process running as the operator can read `.env` and wallet databases; this is not OS isolation. Add real user sessions, per-user ownership, process isolation, quote fees verification, hardened deployment, reorg handling and data-retention controls before public hosting.
+3. **Other parties:** `testnet.zec.rocks` sees wallet IP and sync timing. Fauzec sees the payer address and request IP. Bitrefill sees its account, purchase, receipt email and recipient. The watch-only service can see the receiving account's whole history but cannot spend. The temporary public demo uses Cloudflare, which terminates HTTPS and can see visitor IPs, bearer-authenticated requests, order memos and API responses. No CipherPay or Nym service is used. No LLM provider receives data from this app; any external agent's provider sees the tool calls you send it.
+4. **Trust and next fixes:** trust the operator, wallet software, light-wallet server, HTTPS tunnel provider and their reported state. Loopback wallets, separate owner/agent credentials and same-origin checks serve a **single-operator demo**, exposed temporarily over HTTPS. A compromised local process running as the operator can read `.env` and wallet databases; this is not OS isolation. Add real user sessions, per-user ownership, process isolation, quote fees verification, durable hosting, reorg handling and data-retention controls before offering a multi-user service.
 
 ## How it works
 
@@ -241,6 +250,7 @@ The independent privacy flow is **create resource order → ZIP 321 request → 
 | **Agent protocol** | [Official MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk) |
 | **Commerce** | [Bitrefill MCP](https://docs.bitrefill.com/docs/ecommerce-mcp) |
 | **Testnet wallet** | [zkool2 / zkool_graphql](https://github.com/hhanh00/zkool2) |
+| **Temporary HTTPS hosting** | [cloudflared](https://github.com/cloudflare/cloudflared/releases/tag/2026.10.7) 2026.10.7 and user systemd services |
 | **Optional browser wallet** | [Noir Wallet](https://github.com/NoirWallet/noir-wallet) |
 | **HTTP client** | [httpx](https://www.python-httpx.org/) |
 | **Schema and output parsing** | [jsonschema](https://python-jsonschema.readthedocs.io/) and [toon-format](https://pypi.org/project/toon-format/) |
@@ -368,6 +378,7 @@ For this event, finalize and submit on [Stadium](https://stadium.joinwebzero.com
 | [Architecture](docs/architecture.md) | Dependency rules, interfaces, and module responsibilities. |
 | [Demo guide](docs/demo-guide.md) | Commerce review, private-resource checkout, and honest demo states. |
 | [Zcash testnet](docs/zcash-testnet.md) | Wallet setup, faucet, actual sends, and receiving-wallet verification. |
+| [Deployment](docs/deployment.md) | Temporary HTTPS demo, service controls, trust boundaries, and live verification. |
 | [Environment reference](.env.example) | Required credentials, optional integrations, and default limits. |
 | [Project specification](docs/project-specification.md) | Original design, priorities, and planned production architecture. |
 | [Agent instructions](AGENTS.md) | Project conventions and both original hackathon briefs. |
