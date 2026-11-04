@@ -190,12 +190,87 @@
         <p>Shielded amount and memo are private on-chain. The merchant's viewing wallet sees your payment and order memo. The light-wallet server sees connection timing and IP. Testnet TAZ does not pay for Bitrefill goods.</p>
       </section>
     </section>
+
+    <section class="page-panel" id="x402-panel" role="tabpanel" aria-labelledby="x402-tab" hidden>
+      <div class="x402-hero">
+        <p class="x402-eyebrow">External API payments · Base Sepolia testnet</p>
+        <h1>One request.<br>Exact authority.</h1>
+        <p>Read an API's unpaid challenge, review the exact USDC amount and recipient, then authorize one payment attempt.</p>
+        <p id="x402-config-status" class="field-note" role="status">Checking API payment configuration…</p>
+      </div>
+
+      <section class="workflow" aria-label="API payment steps">
+        <ol class="workflow-steps" id="x402-steps">
+          <li><span class="workflow-index">1</span><span class="workflow-label">Sign in</span></li>
+          <li><span class="workflow-index">2</span><span class="workflow-label">Read challenge</span></li>
+          <li><span class="workflow-index">3</span><span class="workflow-label">Approve terms</span></li>
+          <li><span class="workflow-index">4</span><span class="workflow-label">Attempt once</span></li>
+          <li><span class="workflow-index">5</span><span class="workflow-label">Verified result</span></li>
+        </ol>
+        <div class="workflow-next"><p><span class="muted">Next</span> <span id="x402-next">Checking configuration…</span></p><button id="x402-next-action" class="primary-button" type="button" hidden></button></div>
+      </section>
+
+      <div class="workspace">
+        <section class="panel" aria-labelledby="x402-request-title">
+          <div class="panel-heading"><span class="step" aria-hidden="true">01</span><h2 id="x402-request-title">Read the unpaid challenge.</h2><span class="small-tag">No payment</span></div>
+          <form id="x402-form">
+            <fieldset id="x402-fields" disabled>
+              <label for="x402-url">Allowed API URL</label>
+              <input id="x402-url" type="url" placeholder="https://api.example.com/resource" required maxlength="2048" pattern="https://.*" autocomplete="off" spellcheck="false">
+              <label for="x402-cap">Maximum payment (USD cents)</label>
+              <input id="x402-cap" type="number" min="1" step="1" required inputmode="numeric" placeholder="100">
+              <p class="field-note">100 cents = $1.00. This ceiling shares the daily spending cap with Commerce.</p>
+              <button id="x402-propose" class="primary-button full-width" type="submit">Read unpaid challenge</button>
+            </fieldset>
+          </form>
+          <p class="field-note">Reading a challenge does not sign or send a payment. Only an explicitly approved intent can be executed.</p>
+          <details class="x402-details">
+            <summary>Allowed destinations and settlement policy</summary>
+            <dl id="x402-policy-terms" class="review-terms"></dl>
+          </details>
+        </section>
+
+        <section class="panel review-panel crop" aria-labelledby="x402-review-title">
+          <div class="panel-heading"><span class="step" aria-hidden="true">02</span><h2 id="x402-review-title">Review the exact request.</h2><span class="small-tag">Owner approves</span></div>
+          <div id="x402-empty" class="empty-state tall"><h3>No API payment is authorized.</h3><p>The gateway must verify an allowed testnet challenge before you can review its terms.</p></div>
+          <div id="x402-review" hidden>
+            <div class="intent-banner"><span class="muted">Bound to your approval</span><span id="x402-status" class="status-tag"></span></div>
+            <dl id="x402-terms" class="review-terms"></dl>
+            <div class="digest-row"><span>Intent fingerprint</span><code id="x402-digest"></code></div>
+            <p id="x402-expiry" class="field-note"></p>
+            <details class="x402-details"><summary>Exact challenge and resource</summary><pre id="x402-challenge" class="x402-json"></pre></details>
+            <button id="x402-approve" class="primary-button authority full-width" type="button" hidden>Approve these exact API terms</button>
+            <button id="x402-execute" class="primary-button authority full-width" type="button" hidden>Pay once and call API</button>
+            <button id="x402-reload" class="secondary-button full-width" type="button">Read saved intent status</button>
+            <p id="x402-note" class="field-note"></p>
+            <button id="x402-new" class="text-button" type="button" hidden>Review another request</button>
+          </div>
+        </section>
+      </div>
+
+      <section id="x402-result-panel" class="panel activity-panel" aria-labelledby="x402-result-title" hidden>
+        <div class="panel-heading"><span class="step" aria-hidden="true">03</span><h2 id="x402-result-title">Verified API result.</h2><span class="small-tag">Gateway evidence</span></div>
+        <dl id="x402-settlement-terms" class="review-terms"></dl>
+        <pre id="x402-result" class="x402-result"></pre>
+      </section>
+
+      <section class="panel activity-panel" aria-labelledby="x402-history-title">
+        <div class="panel-heading"><h2 id="x402-history-title">API payment history.</h2><button id="x402-history-refresh" class="text-button" type="button">Read saved history</button></div>
+        <div id="x402-history" class="x402-history"><p class="muted">Sign in to see your API payment intents.</p></div>
+        <div id="x402-audit" class="audit-events" hidden></div>
+      </section>
+      <section class="trust-strip">
+        <h3>Explicit authority, separate payment rails.</h3>
+        <p>The trusted gateway holds the operator's testnet signing authority. The API sees the request and payment; Base Sepolia settlement is public. This feature uses testnet USDC, separately from Zcash and Bitrefill. A payment attempt is never retried automatically; an unknown result requires manual reconciliation.</p>
+      </section>
+    </section>
   </main>
 
   <nav class="hud" aria-label="Workspace">
     <div class="hud-tabs" role="tablist">
       <button class="hud-tab selected" id="commerce-tab" role="tab" aria-selected="true" aria-controls="commerce-panel">Commerce</button>
       <button class="hud-tab" id="private-tab" role="tab" aria-selected="false" aria-controls="private-panel">Private resource</button>
+      <button class="hud-tab" id="x402-tab" role="tab" aria-selected="false" aria-controls="x402-panel">API payments</button>
     </div>
     <span class="hud-status"><span class="connection-dot" id="gateway-dot" aria-hidden="true"></span><span id="gateway-status">Connecting…</span></span>
     <span class="hud-clock" id="hud-clock" aria-hidden="true">--:--:--</span>

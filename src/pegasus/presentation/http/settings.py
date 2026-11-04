@@ -17,3 +17,6 @@ class HttpSettings:
     allowed_countries: frozenset[str]
     zcash_amount_zats: int
     static_directory: Path
+    x402_configured: bool = False
+    x402_allowed_origins: frozenset[str] = frozenset()
+    x402_allowed_payees: frozenset[str] = frozenset()

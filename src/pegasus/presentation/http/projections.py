@@ -22,3 +22,15 @@ def present_intent(intent: dict, owner: bool = False) -> dict:
         }
     )
     return value
+
+
+def present_x402_intent(intent: dict) -> dict:
+    """Never project signing keys, payment signatures or internal SDK state."""
+    value = {
+        key: intent[key]
+        for key in ("id", "kind", "action", "digest", "status", "created_at", "expires_at")
+    }
+    value["reason"] = intent.get("reason")
+    value["settlement"] = intent.get("settlement")
+    value["result"] = intent.get("result") if intent["status"] == "SUCCEEDED" else None
+    return value
