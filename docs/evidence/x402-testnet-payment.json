@@ -1,0 +1,77 @@
+{
+  "verification": "live-public-testnet",
+  "verified_at": "2026-11-04T17:09:58.638574+00:00",
+  "network": "eip155:84532",
+  "chain_id": 84532,
+  "resource_url": "https://x402.vercel.app/protected/evm/exact/erc3009",
+  "gateway_transport": "HTTP on loopback; live external API and RPC",
+  "merchant": "Official x402 Foundation public testnet demo",
+  "intent_id": "xi_c27e0a03b1f94773a6d6e505668df37c",
+  "digest": "e59f79506d34cd13d0a5a21a020a6dd46a3f840c0e08bb0ede8f3c542a4da21e",
+  "status": "SUCCEEDED",
+  "amount_test_usdc": "0.001",
+  "approved_ceiling_minor": 1,
+  "currency": "USD",
+  "settlement": {
+    "network": "eip155:84532",
+    "transaction": "0x8f144b1a9880cc15eb7e0ad1364b4947973c68cf35b2a73dbb1f1ec77e81c86d",
+    "payer": "0x7430DcCe185f06206b07695f89375eE9D55F8716",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "pay_to": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "amount_atomic": "1000",
+    "verified": true,
+    "authorization_verified": true,
+    "block_number": 54451642
+  },
+  "payer_balances_atomic": {
+    "before": "20000000",
+    "after": "19999000",
+    "debit": "1000"
+  },
+  "checks": {
+    "missing_authentication_http_status": 401,
+    "agent_approval_http_status": 403,
+    "replayed_execution": {
+      "http_status": 409,
+      "code": "GRANT_REPLAY"
+    }
+  },
+  "audit": [
+    {
+      "action": "propose",
+      "reason": "POLICY_PASSED",
+      "occurred_at": 1793812194
+    },
+    {
+      "action": "approve",
+      "reason": "EXACT_INTENT_APPROVED",
+      "occurred_at": 1793812195
+    },
+    {
+      "action": "execute",
+      "reason": "GRANT_CONSUMED_AND_BUDGET_RESERVED",
+      "occurred_at": 1793812195
+    },
+    {
+      "action": "x402_provider",
+      "reason": "SUCCEEDED",
+      "occurred_at": 1793812198
+    },
+    {
+      "action": "x402_execute_denied",
+      "reason": "GRANT_REPLAY",
+      "occurred_at": 1793812198
+    }
+  ],
+  "api_result": {
+    "content_type": "application/json",
+    "body": {
+      "ok": true,
+      "caip2Family": "evm",
+      "scheme": "exact",
+      "assetTransferMethod": "erc3009"
+    }
+  },
+  "explorer_url": "https://sepolia.basescan.org/tx/0x8f144b1a9880cc15eb7e0ad1364b4947973c68cf35b2a73dbb1f1ec77e81c86d",
+  "trust_note": "Transparent test-USDC transfer; gateway signs with dedicated local testnet key. Receipt verified against configured public RPC, including Transfer and AuthorizationUsed nonce. This is separate from shielded Zcash receipts and pending Bitrefill delivery."
+}

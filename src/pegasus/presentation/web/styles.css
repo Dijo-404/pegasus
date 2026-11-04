@@ -137,6 +137,7 @@ tbody tr:last-child td{border-bottom:0}
 .audit-event{display:flex;align-items:baseline;gap:16px;padding:4px 0;font-family:var(--mono);font-size:12px}
 .audit-event time{color:var(--graphite);flex-shrink:0}
 .audit-event strong{font-weight:400}
+.audit-event strong,.audit-event>span{min-width:0;overflow-wrap:anywhere}
 .page-footnote{margin-top:28px;font-size:13px;color:var(--graphite)}
 
 /* Workflow rail: completed steps, the current step, and one concrete next action. */
@@ -224,3 +225,24 @@ dialog p{font-size:14px;color:var(--graphite)}
 @media(max-width:900px){.workflow-steps li:not([aria-current]) .workflow-label{display:none}.workflow-steps li{justify-content:center}.workflow-steps li[aria-current]{grid-column:span 3;justify-content:flex-start}.hero{grid-template-columns:1fr;gap:32px}.readout{max-width:460px}.workspace{grid-template-columns:1fr;gap:48px}.private-hero{grid-template-columns:1fr}.shield-stage{max-height:none;max-width:560px;width:100%}.private-order-grid{grid-template-columns:1fr;gap:12px}}
 @media(max-width:600px){.workflow-next{flex-direction:column;align-items:stretch}.workflow-next .primary-button{justify-content:center}.masthead{padding:14px 16px;gap:16px}.brand{font-size:19px}main{padding:0 16px calc(var(--hud-height) + 40px)}.hero{--boundary:128px;padding-top:184px;padding-bottom:36px}.hero-copy p,.private-copy>p{font-size:16px}.review-panel{padding:20px 18px 22px}.panel-heading{flex-wrap:wrap;gap:10px}.form-row{flex-direction:column;gap:0}.country-field{width:auto}.empty-state.tall{min-height:200px}.resource-price strong{font-size:33px}.hud{gap:8px;padding:0 8px 0 0}.hud-tab{padding:0 10px;font-size:13px}.hud-status,.hud-clock{display:none}.hud-session{margin-left:auto;padding:0 10px;font-size:13px}.review-terms dd{max-width:60%}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+
+/* External API payments keep the owner authority surface separate from merchant checkout. */
+.x402-hero{padding:64px 0 28px;max-width:900px}
+.x402-eyebrow{font-family:var(--mono);font-size:12px;color:var(--signal);margin-bottom:18px}
+.x402-hero h1{font-size:clamp(44px,6vw,84px);line-height:.95;letter-spacing:-.05em;font-weight:520}
+.x402-hero>p:not(.x402-eyebrow){margin-top:20px;max-width:65ch;color:var(--graphite);font-size:16px}
+#x402-fields{border:0;padding:0;margin:0;min-width:0}
+#x402-fields>label:first-child{margin-top:0}
+.x402-details{margin-top:20px;border-top:1px solid var(--rule);padding-top:12px}
+.x402-details summary{cursor:pointer;font-size:14px;font-weight:520}
+.x402-json,.x402-result{font-family:var(--mono);font-size:13px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere;max-width:100%;overflow:auto}
+.x402-json{padding:14px 0;color:var(--graphite)}
+.x402-result{padding:20px;border:1px solid var(--signal);background:var(--field)}
+#x402-digest{min-width:0;overflow-wrap:anywhere}
+#x402-policy-terms dd{max-width:68%}
+.x402-history-item{display:flex;align-items:center;gap:16px;width:100%;padding:14px 0;background:none;border:0;border-bottom:1px solid var(--rule);text-align:left}
+.x402-history-item:hover{background:var(--plate)}
+.x402-history-item>span:first-child{flex:1;min-width:0;overflow-wrap:anywhere}
+.x402-history-item small{display:block;font-family:var(--mono);font-size:11px;color:var(--graphite);margin-top:4px}
+#x402-audit{margin-top:20px}
+@media(max-width:600px){:root{--hud-height:88px}.hud{display:grid;grid-template-columns:1fr auto;grid-template-rows:44px 44px;gap:0;padding:0 8px}.hud-tabs{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%;height:44px}.hud-tab{padding:0 6px;font-size:12px;min-width:0;white-space:nowrap}.hud-session{grid-column:2;justify-self:end;margin:0;min-height:32px}.x402-hero{padding-top:40px}.x402-history-item{align-items:flex-start;gap:8px;flex-wrap:wrap}}

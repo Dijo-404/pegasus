@@ -3,6 +3,8 @@
 from fastapi import APIRouter, Depends
 from fastapi.responses import FileResponse
 
+from pegasus.domain.x402_policy import BASE_SEPOLIA_NETWORK, BASE_SEPOLIA_USDC
+
 from ..authentication import HttpAuthentication
 from ..settings import HttpSettings
 
@@ -29,6 +31,13 @@ def build_system_router(settings: HttpSettings, authentication: HttpAuthenticati
             "allowed_products": sorted(settings.allowed_products),
             "allowed_countries": sorted(settings.allowed_countries),
             "merchant": {"name": "Pegasus private demo resource", "amount_zats": settings.zcash_amount_zats},
+            "x402": {
+                "configured": settings.x402_configured,
+                "network": BASE_SEPOLIA_NETWORK,
+                "asset": BASE_SEPOLIA_USDC,
+                "allowed_origins": sorted(settings.x402_allowed_origins),
+                "allowed_payees": sorted(settings.x402_allowed_payees),
+            },
         }
 
     @router.get("/api/session")

@@ -15,8 +15,9 @@ def _encode(value: bytes) -> str:
 
 
 class HmacGrantAuthority:
-    def __init__(self, secret: str):
+    def __init__(self, secret: str, expected_action: str = "bitrefill.create_invoice"):
         self._secret = secret.encode()
+        self._expected_action = expected_action
 
     def sign(self, claims: dict) -> str:
         body = _encode(canonical(claims))
@@ -32,7 +33,7 @@ class HmacGrantAuthority:
             now = int(time.time())
             if claims["iss"] != GRANT_ISSUER or claims["aud"] != "execution-gateway":
                 raise ValueError()
-            if claims["action"] != "bitrefill.create_invoice" or claims["v"] != 1:
+            if claims["action"] != self._expected_action or claims["v"] != 1:
                 raise ValueError()
             if claims["exp"] <= now or claims["nbf"] > now:
                 raise Denied("GRANT_EXPIRED", "This approval expired. Create a fresh intent.")

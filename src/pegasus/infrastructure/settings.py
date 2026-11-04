@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 
 from pegasus.domain.commerce_policy import CommercePolicy
 from pegasus.domain.private_checkout_policy import PrivateCheckoutPolicy
+from pegasus.domain.x402_policy import X402Policy
 
 
 def csv(value: str) -> frozenset[str]:
@@ -50,6 +51,11 @@ class Settings:
     zcash_account_id: int = 1
     zcash_confirmations: int = 1
     zcash_amount_zats: int = 100000
+    x402_enabled: bool = False
+    x402_allowed_origins: frozenset[str] = field(default_factory=frozenset)
+    x402_allowed_payees: frozenset[str] = field(default_factory=frozenset)
+    x402_private_key_file: str = ".local/x402-payer.key"
+    x402_rpc_url: str = "https://sepolia.base.org"
 
     def __post_init__(self):
         for name in ("owner_token", "agent_token", "grant_secret"):
@@ -87,6 +93,18 @@ class Settings:
     def private_checkout_policy(self) -> PrivateCheckoutPolicy:
         return PrivateCheckoutPolicy(enabled=self.zcash_enabled, amount_zats=self.zcash_amount_zats)
 
+    @property
+    def x402_policy(self) -> X402Policy:
+        return X402Policy(
+            enabled=self.x402_enabled,
+            allowed_origins=self.x402_allowed_origins,
+            allowed_payees=self.x402_allowed_payees,
+            max_purchase_minor=self.max_purchase_minor,
+            max_daily_minor=self.max_daily_minor,
+            quote_ttl_seconds=self.quote_ttl_seconds,
+            grant_ttl_seconds=self.grant_ttl_seconds,
+        )
+
     @classmethod
     def from_env(cls):
         load_dotenv()
@@ -95,7 +113,9 @@ class Settings:
             value = os.environ.get(name.upper())
             if value is None:
                 continue
-            if name.startswith("allowed_") or name == "http_allowed_hosts":
+            if name.startswith("allowed_") or name in {
+                "http_allowed_hosts", "x402_allowed_origins", "x402_allowed_payees"
+            }:
                 values[name] = csv(value)
             elif info.type is int:
                 values[name] = int(value)

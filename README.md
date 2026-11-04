@@ -32,13 +32,13 @@
 <p align="center"><sub>Captured from the running dashboard. <a href="docs/assets/demo-mobile.png">Mobile view</a>.</sub></p>
 
 > [!NOTE]
-> **Prototype v0.1.0.** Real shielded testnet payments have been verified. A credential-backed Bitrefill purchase-and-delivery run is still pending; invoice creation alone is not delivery.
+> **Prototype v0.1.0.** Real shielded Zcash payments and an owner-approved x402 API payment have been verified on public testnets. A credential-backed Bitrefill purchase-and-delivery run is still pending; invoice creation alone is not delivery.
 
 ## Overview
 
 Pegasus is a local commerce gateway for people and small teams using an external shopping agent. It keeps purchase policy, exact owner approval, and execution authority in deterministic code, with a separate Zcash testnet merchant for private resource access.
 
-**Implemented:** live Bitrefill MCP adapter, separate owner approval, signed single-use execution grants, USD spend caps, encrypted SQLite records, an agent-facing MCP interface, and an independent Zcash testnet resource checkout. The dashboard runs locally with no frontend build step.
+**Implemented:** live Bitrefill MCP adapter, separate owner approval, signed single-use execution grants, USD spend caps, encrypted SQLite records, an agent-facing MCP interface, an independent Zcash testnet resource checkout, and an opt-in x402 guard for external API payments on Base Sepolia. The dashboard runs locally with no frontend build step.
 
 ### Features
 
@@ -47,6 +47,7 @@ Pegasus is a local commerce gateway for people and small teams using an external
 - **One purchase attempt.** Atomic grant consumption rejects replay; an ambiguous provider result remains `UNCERTAIN` with its reservation retained.
 - **Provider-backed delivery status.** Current catalog prices and invoice terms are checked; delivery is reported only when every order is delivered.
 - **Independent shielded checkout.** A watch-only receiver verifies mined testnet notes and the order memo before issuing a five-minute, single-use resource entitlement.
+- **Guarded API payments.** Review one allowlisted x402 v2 `exact` GET request, approve its full payment terms, and attempt it once with test USDC. API payments and Bitrefill share the same USD reservation ledger.
 - **Clear authority boundaries.** Domain rules, application use cases, external adapters, and HTTP/MCP interfaces occupy separate layers.
 - **Guided workspace.** Role-aware sign-in, a visible next step, automatic payment-status checks, and restored intent/order progress after a reload.
 
@@ -72,6 +73,7 @@ Pegasus handles this with a canonical action, deterministic policy, a short-live
 | **Commerce** | A backend Bitrefill developer key and explicit product, receipt-email, and recipient allowlists. |
 | **Optional** | Node.js for Bitrefill CLI diagnostics and browser checks. |
 | **Optional private checkout** | A loopback `zkool_graphql` testnet receiver. The documented prebuilt wallet binary is Linux x86_64; other platforms may require a source build. |
+| **Optional API payments** | The `x402` extra, an allowlisted Base Sepolia API/payee, and a dedicated local testnet payer key. See [x402 payments](docs/x402-payments.md). Disabled by default. |
 
 Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/). Node is only needed for optional Bitrefill CLI diagnostics and browser checks.
 
@@ -84,6 +86,8 @@ uv sync --locked
 ```
 
 This installs the package and development dependencies from the committed lockfile into the project virtual environment. Wallet setup is separate; see [the Zcash testnet guide](docs/zcash-testnet.md).
+
+For optional external API payments, install `uv sync --locked --extra x402` and follow [the x402 setup guide](docs/x402-payments.md). Installing the extra does not create a wallet, enable payments, or send funds.
 
 ### Updating
 
@@ -130,12 +134,13 @@ The optional [local editable preview](http://localhost:3004/#project/pegasus-fil
 | `uv run uvicorn pegasus.bootstrap:create_app --factory --host 127.0.0.1 --port 8787` | Start the dashboard and trusted HTTP gateway. |
 | `uv run python -m pegasus.presentation.mcp.server` | Start the agent-facing stdio MCP server with `AGENT_TOKEN` supplied separately. |
 | `uv run python scripts/zcash_testnet.py --help` | Show the explicit testnet wallet setup, faucet, send, and watch commands. |
+| `uv run --extra x402 python scripts/setup_x402_wallet.py` | Explicitly create a dedicated testnet payer key beneath ignored `.local/`; print public metadata only. Optional, and refuses to overwrite an existing key. |
 | `uv run python scripts/verify_testnet_deployment.py --base-url <public-https-origin>` | Explicitly send one capped testnet payment and verify the deployed private checkout; resume using the same state file. |
 | `uv run pytest -q` | Run unit, integration, security, and architecture checks. |
 
 ### Dashboard flow
 
-Use **Sign in** to enter an owner or agent token; the gateway identifies its role. The Commerce rail guides product selection, exact approval, invoice creation, payment and delivery. The Private resource rail guides a separate testnet payment and single-use access. Each rail highlights the current step and offers its next action.
+Use **Sign in** to enter an owner or agent token; the gateway identifies its role. **Commerce** guides product selection, exact approval, invoice creation, payment and delivery. **Private resource** guides a separate Zcash testnet payment and single-use access. **API payments** guides an unsigned x402 challenge, exact owner approval and one explicitly requested testnet payment attempt. Each tab highlights the current step and offers its next action.
 
 Pending Bitrefill invoices refresh every 30 seconds; private payments refresh every 20 seconds, with a visible countdown. Checks pause while the tab is hidden and stop after a bounded window. Reloading restores the current intent and private order from their saved IDs; execution grants stay in page memory and are not recreated. Signing out clears tokens and sensitive purchase/payment details from the view.
 
@@ -144,6 +149,8 @@ Pending Bitrefill invoices refresh every 30 seconds; private payments refresh ev
 **Review one purchase.** Configure the local allowlists, search the catalog, choose an exact denomination, and review every term, including the receipt destination. An API key uses its connected Bitrefill account; guest checkout uses an allowlisted email. Approve as owner, execute the grant once, and refresh the authoritative invoice state. Open a provider payment link only after the gateway verifies its terms.
 
 **Pay for the separate private resource.** Create a testnet payment request, send the requested amount and memo from a compatible wallet, refresh until the receiving watcher confirms it, and redeem the entitlement once. See [the demo guide](docs/demo-guide.md) for the walkthrough.
+
+**Guard one external API payment.** After the operator enables the optional integration, open **API payments**, enter an allowlisted HTTPS GET URL and a ceiling in whole USD cents, then choose **Read unpaid challenge**. Review the resource, payee, token, network, amount, ceiling and fingerprint. An owner approves those exact terms, then chooses **Pay once and call API**. A verified mined USDC receipt is required before the result is shown. `UNCERTAIN` means reconcile manually; reading saved status never repeats the payment. See [x402 payments](docs/x402-payments.md).
 
 ### Connect an agent
 
@@ -163,7 +170,7 @@ Start `pegasus.presentation.mcp.server` in a separate process with **only AGENT_
 }
 ```
 
-Tools: `search_products`, `product_details`, `propose_purchase`, `execute_approved_purchase`, `purchase_status`. Approval happens in the owner dashboard. The dashboard can execute the approved grant itself; an external agent can execute a grant explicitly supplied by the owner. The agent never gets the owner credential, Bitrefill key, invoice access token or guest payment link.
+Commerce tools: `search_products`, `product_details`, `propose_purchase`, `execute_approved_purchase`, `purchase_status`. Optional API-payment tools: `propose_api_payment`, `execute_approved_api_payment`, `api_payment_status`. Approval happens in the owner dashboard. The dashboard can execute the approved grant itself; an external agent can execute a grant explicitly supplied by the owner. The agent never gets the owner credential, Bitrefill key, EVM signing key, payment signature, invoice access token or guest payment link.
 
 ### Live payment evidence
 
@@ -184,6 +191,18 @@ The earlier recovered API checkout verified five confirmations. Its original ord
 
 Public explorers verify transaction existence, height and fees; they do not reveal shielded amounts or memos. The amounts and exact memo checks above came from the receiver's authorized watch-only wallet.
 
+### Verified x402 testnet API payment
+
+On **4 November 2026**, the gateway completed a real x402 v2 `exact` API request using **0.001 test USDC on Base Sepolia**, with a **one-cent approved ceiling**. The actual HTTP flow used owner approval followed by execution with the agent credential. The configured public RPC verified a mined status-1 receipt, the exact USDC `Transfer`, and `AuthorizationUsed` for the signed nonce. This is a transparent EVM payment, separate from the shielded Zcash receipts and pending Bitrefill delivery. [Live receipt](docs/evidence/x402-testnet-payment.json).
+
+| Transaction | Mined block | Observed checks |
+| :--- | ---: | :--- |
+| [`0x8f144b1a9880cc15eb7e0ad1364b4947973c68cf35b2a73dbb1f1ec77e81c86d`](https://sepolia.basescan.org/tx/0x8f144b1a9880cc15eb7e0ad1364b4947973c68cf35b2a73dbb1f1ec77e81c86d) | 54451642 | Payer balance `20 → 19.999` test USDC; replay rejected with HTTP 409 `GRANT_REPLAY`; missing authentication returned 401 and agent approval returned 403. |
+
+The resource was the [public x402 testnet demo](https://x402.vercel.app/protected/evm/exact/erc3009), with payee `0x209693Bc6afc0C5328bA36FaF03C514EF312287C`. These are the terms observed in the saved receipt, rather than a guarantee about future public-demo responses. [The x402 guide](docs/x402-payments.md) includes the reproducible configuration and fresh-review requirements. This run used the loopback HTTP gateway with the live external API and RPC; it is not claimed as a recorded browser checkout.
+
+The [follow-up verification](docs/evidence/x402-testnet-verification.json) checked the receipt through a second RPC, confirmed one consumed grant and one one-cent reservation, and verified that the saved result survived a gateway restart. Desktop and 390px mobile browser checks read that saved result without issuing another payment.
+
 ## Configuration
 
 Settings live in the private `.env` file; the complete defaults and required keys are listed in [.env.example](.env.example). The owner and agent tokens must differ. Signing and encryption keys are required and generated by the setup script; provider credentials and allowlists must be configured locally.
@@ -201,13 +220,15 @@ MAX_PURCHASE_MINOR=500
 MAX_DAILY_MINOR=1000
 ```
 
-Use a zero-balance Bitrefill account and a manual crypto method for development. This MVP rejects balance/cashback payments and has no wallet-payment signer. Above a cap, no invoice is created; the operator must change local policy and restart before making and approving a fresh proposal. There is no agent-callable override.
+Use a zero-balance Bitrefill account and a manual crypto method for development. The Bitrefill path rejects balance/cashback payments and has no wallet-payment signer. Above a cap, no invoice is created; the operator must change local policy and restart before making and approving a fresh proposal. There is no agent-callable override.
 
 The provider's authenticated checkout schema determines the receipt destination. API-key purchases require explicit approval of **Connected Bitrefill account**, bound to the configured credential's one-way reference. Changing the credential or receipt mode invalidates that approval. Guest purchases keep their exact allowlisted email. The gateway never substitutes a configured email for missing provider evidence.
 
 For a no-charge provider delivery test, ask Bitrefill to enable `delos-syldavia` on the account owning the key and add `KN` to `ALLOWED_COUNTRIES`. Choose a provider-listed crypto method. Account-enabled test-only invoices confirm without payment and deliver a test code; balance payments remain disabled. [Bitrefill's test-product guide](https://docs.bitrefill.com/docs/mcp-partner-integration-guide#test-products). This provider test is separate from Zcash testnet payments.
 
 The Zcash path uses a local watch-only `zkool_graphql` account. Set `ZCASH_ENABLED=true` only when that receiver is running. See [docs/zcash-testnet.md](docs/zcash-testnet.md) for safe wallet setup, faucet, actual send and verification commands. The live wallets created during implementation stay in ignored `.local/zcash/`; these are testnet development wallets, not production custody.
+
+External API payments are independently opt-in with `X402_ENABLED=true`, explicit origin/payee allowlists and a dedicated local Base Sepolia key. The trusted gateway holds that EVM spending authority; it is separate from the Zcash watch-only receiver. The operator configured and funded a dedicated testnet payer for the [verified live run](docs/evidence/x402-testnet-payment.json). New installations remain disabled by default. [The x402 guide](docs/x402-payments.md) covers setup without exposing the key.
 
 ### Environment variables
 
@@ -220,13 +241,17 @@ The Zcash path uses a local watch-only `zkool_graphql` account. Set `ZCASH_ENABL
 | `DATABASE_PATH` | SQLite location; defaults to `.local/pegasus.db`. |
 | `HTTP_ALLOWED_HOSTS` | Explicit lowercase HTTP hostnames/IPs; loopback defaults, no wildcards. The HTTPS deployment supplies its exact public hostname. |
 | `BITREFILL_API_KEY` | Backend-only credential for live commerce; empty disables those calls. |
-| `MAX_PURCHASE_MINOR` / `MAX_DAILY_MINOR` | USD cent ceilings; defaults `500` / `1000`. |
+| `MAX_PURCHASE_MINOR` / `MAX_DAILY_MINOR` | Shared Bitrefill/API-payment USD cent ceilings; defaults `500` / `1000`. |
 | `ALLOWED_PRODUCTS` / `ALLOWED_COUNTRIES` | Explicit product IDs and country codes. |
 | `ALLOWED_EMAILS` / `ALLOWED_RECIPIENTS` | Guest receipt-email and delivery-recipient allowlists. Connected-account receipts use a bound account reference. |
 | `QUOTE_TTL_SECONDS` / `GRANT_TTL_SECONDS` | Quote and grant lifetimes; defaults `300` / `90`. |
 | `ZCASH_ENABLED` | Enable the independent merchant only after its receiver is running. |
 | `ZCASH_GRAPHQL_URL` / `ZCASH_ACCOUNT_ID` | Loopback wallet endpoint and receiving account; defaults `http://127.0.0.1:8000/graphql` / `1`. |
 | `ZCASH_CONFIRMATIONS` / `ZCASH_AMOUNT_ZATS` | Required confirmations and resource price; defaults `1` / `100000` zats. |
+| `X402_ENABLED` | Opt in to external API payments; defaults `false`. |
+| `X402_ALLOWED_ORIGINS` / `X402_ALLOWED_PAYEES` | Exact public HTTPS API origins and Base Sepolia USDC recipient addresses; both default empty. |
+| `X402_PRIVATE_KEY_FILE` | Operator-only payer key file; defaults `.local/x402-payer.key`. Never supplied to the agent or browser. |
+| `X402_RPC_URL` | Public HTTPS Base Sepolia RPC; defaults `https://sepolia.base.org`. Chain ID is checked before signing. |
 
 ### Files it creates
 
@@ -236,6 +261,7 @@ The Zcash path uses a local watch-only `zkool_graphql` account. Set `ZCASH_ENABL
 | `.venv/` | Locked Python project and development dependencies. |
 | `.local/pegasus.db` | Encrypted order records plus the grant, reservation, and audit ledger. |
 | `.local/zcash/` | Disposable testnet wallet databases and explicit wallet-tool state, when that setup is used. |
+| `.local/x402-payer.key` | Optional dedicated EVM testnet key, created only by an explicit setup command with mode 0600. |
 | `.local/deployment/` | Private temporary-host configuration, URL state, and HTTP/tunnel logs. |
 | `.local/backups/pre-rename.db` | Private original database retained during the Pegasus rename, when present. |
 | `~/.zcash-params/` | Sapling parameters downloaded by the wallet tool on first start. |
@@ -244,10 +270,10 @@ Private environment, wallet, database, and runtime files are ignored by git.
 
 ## Privacy and safety
 
-1. **Shielded on-chain:** the separate merchant payment uses Ironwood/Sapling notes. Its amount and memo are visible to the receiver's viewing key, not the public explorer. Bitrefill commerce has no Zcash privacy claim.
+1. **Shielded on-chain:** the separate Zcash merchant payment uses Ironwood/Sapling notes. Its amount and memo are visible to the receiver's viewing key, not the public explorer. Bitrefill commerce and transparent Base Sepolia USDC API payments have no Zcash privacy claim. EVM sender, recipient and amount are public.
 2. **App storage:** purchase fields, recipients, private orders and provider access tokens are Fernet-encrypted at rest. Intent IDs, digests, states, timestamps, grant consumption and budget reservations remain plaintext. Audit events contain reason codes, not recipients or codes. The operator holds the encryption key in local `.env` and can decrypt records.
-3. **Other parties:** `testnet.zec.rocks` sees wallet IP and sync timing. Fauzec sees the payer address and request IP. Bitrefill sees its account, purchase, receipt email and recipient. The watch-only service can see the receiving account's whole history but cannot spend. The temporary public demo uses Cloudflare, which terminates HTTPS and can see visitor IPs, bearer-authenticated requests, order memos and API responses. No CipherPay or Nym service is used. No LLM provider receives data from this app; any external agent's provider sees the tool calls you send it.
-4. **Trust and next fixes:** trust the operator, wallet software, light-wallet server, HTTPS tunnel provider and their reported state. Loopback wallets, separate owner/agent credentials and same-origin checks serve a **single-operator demo**, exposed temporarily over HTTPS. A compromised local process running as the operator can read `.env` and wallet databases; this is not OS isolation. Add real user sessions, per-user ownership, process isolation, quote fees verification, durable hosting, reorg handling and data-retention controls before offering a multi-user service.
+3. **Other parties:** `testnet.zec.rocks` sees wallet IP and sync timing. Fauzec sees the payer address and request IP. Bitrefill sees its account, purchase, receipt email and recipient. The watch-only service can see the receiving account's whole history but cannot spend. For optional x402 payments, the external API/facilitator sees the request, payer and authorization; the RPC provider sees gateway IP and receipt queries. The temporary public demo uses Cloudflare, which terminates HTTPS and can see visitor IPs, bearer-authenticated requests, order memos and API responses. No CipherPay or Nym service is used. No LLM provider receives data from this app; any external agent's provider sees the tool calls and returned API content you send it.
+4. **Trust and next fixes:** trust the operator, wallet software, light-wallet server, external API/facilitator, configured RPC, HTTPS tunnel provider and their reported state. The optional EVM key is held by the trusted gateway, which can sign payments; the Zcash receiver remains watch-only. Loopback wallets, separate owner/agent credentials and same-origin checks serve a **single-operator demo**, exposed temporarily over HTTPS. A compromised local process running as the operator can read `.env`, wallet databases and the EVM key; this is not OS isolation. Add real user sessions, per-user ownership, process isolation, quote fees verification, durable hosting, reorg handling and data-retention controls before offering a multi-user service.
 
 ## How it works
 
@@ -262,9 +288,12 @@ flowchart LR
     G --> H[Provider delivery reconciliation]
     I[Separate shielded testnet payment] --> J[Watch-only confirmation]
     J --> K[Single-use resource entitlement]
+    E --> L[One approved x402 API GET]
+    L --> M[Test USDC receipt and authorization check]
+    M --> N[Verified API result]
 ```
 
-The commerce and private-resource paths settle independently. A canonical action keeps approval and execution bound to the same terms; provider and receiving-wallet evidence determine the resulting state.
+Bitrefill, Zcash resource access and external x402 API payments settle independently. Commerce and API payments share the USD reservation ledger, with distinct grant actions and intent kinds. A canonical action keeps approval and execution bound to the same terms; provider, receiving-wallet or RPC evidence determines the resulting state.
 
 ### Core flow
 
@@ -278,6 +307,8 @@ The commerce and private-resource paths settle independently. A canonical action
 
 The independent privacy flow is **create resource order → ZIP 321 request → user-approved shielded testnet send → watch-only verification of mined notes and memo → five-minute single-use entitlement**. Broadcast alone never unlocks the resource. One chain transaction cannot fulfil two orders.
 
+The optional API-payment flow is **unsigned 402 discovery → exact owner review → 90-second grant → challenge recheck → atomic shared-budget reservation → one signed GET → mined receipt and nonce verification → API result**. Only x402 v2 `exact` USDC on Base Sepolia is supported. Signing authorizations expire within five minutes. An absent RPC receipt is polled read-only for at most 12 seconds, bounded by the authorization deadline; the paid request is never repeated. The live run above complements automated checks with explicit doubles.
+
 ## Tech stack
 
 | Component | Tool |
@@ -287,6 +318,7 @@ The independent privacy flow is **create resource order → ZIP 321 request → 
 | **Agent protocol** | [Official MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk) |
 | **Commerce** | [Bitrefill MCP](https://docs.bitrefill.com/docs/ecommerce-mcp) |
 | **Testnet wallet** | [zkool2 / zkool_graphql](https://github.com/hhanh00/zkool2) |
+| **Optional API payments** | [x402 Python SDK](https://github.com/x402-foundation/x402/tree/main/python/x402) 2.25.0 (`evm,httpx` extra), EIP-3009 USDC on Base Sepolia |
 | **Temporary HTTPS hosting** | [cloudflared](https://github.com/cloudflare/cloudflared/releases/tag/2026.10.7) 2026.10.7 and user systemd services |
 | **Optional browser wallet** | [Noir Wallet](https://github.com/NoirWallet/noir-wallet) |
 | **HTTP client** | [httpx](https://www.python-httpx.org/) |
@@ -297,7 +329,7 @@ The independent privacy flow is **create resource order → ZIP 321 request → 
 
 ### Built versus reused
 
-Lane 1 (rails and guardrails), with a separate Privacy merchant. New code implements the authority, SQLite ledger, policy, dashboard, read-only watcher and adapters. It uses the official MCP Python SDK, Bitrefill MCP, zkool2 `zkool_graphql`, optional Noir browser provider, FastAPI, httpx, jsonschema, TOON decoding and cryptography. The dashboard self-hosts the Host Grotesk and Departure Mono fonts (SIL Open Font License) and draws its visuals with plain canvas code, so the strict same-origin Content-Security-Policy is unchanged. Versions are pinned by [uv.lock](uv.lock); wallet release details are in the receipt. No code was copied from the repositories proposed in [the project specification](docs/project-specification.md), so their license/compatibility questions do not block this small implementation.
+Lane 1 (rails and guardrails), with a separate Privacy merchant. New code implements the authority, SQLite ledger, policy, dashboard, read-only watcher and adapters. It uses the official MCP Python SDK, Bitrefill MCP, zkool2 `zkool_graphql`, optional Noir browser provider, optional x402 Python SDK, FastAPI, httpx, jsonschema, TOON decoding and cryptography. The dashboard self-hosts the Host Grotesk and Departure Mono fonts (SIL Open Font License) and draws its visuals with plain canvas code, so the strict same-origin Content-Security-Policy is unchanged. Versions are pinned by [uv.lock](uv.lock); wallet release details are in the receipt. No code was copied from the repositories proposed in [the project specification](docs/project-specification.md), so their license/compatibility questions do not block this small implementation.
 
 The two official llms.txt briefs are saved intact in [AGENTS.md](AGENTS.md), with separate source copies in [docs/briefs](docs/briefs). [docs/project-specification.md](docs/project-specification.md) is the original design; its broader TypeScript planner and production architecture remain future work.
 
@@ -309,7 +341,7 @@ Pegasus uses four layers with dependencies pointing toward the domain. Purchase 
 src/pegasus/
 ├── domain/              # purchase rules, canonicalization, domain errors
 ├── application/         # use cases and provider/repository interfaces
-├── infrastructure/      # settings, SQLite, signing, Bitrefill and Zcash clients
+├── infrastructure/      # settings, SQLite, signing, Bitrefill, Zcash and x402 clients
 ├── presentation/
 │   ├── http/            # routes, input schemas, authentication and response views
 │   ├── mcp/             # agent-facing tools
@@ -340,13 +372,15 @@ node --check src/pegasus/presentation/web/visuals.js  # Check dashboard canvas v
 ### Verification
 
 ```sh
-uv run pytest -q
-uv run ruff check .
+uv run --locked --extra x402 pytest -q
+uv run --locked --extra x402 ruff check .
 node --check src/pegasus/presentation/web/app.js
 node --check src/pegasus/presentation/web/visuals.js
 ```
 
 Tests exercise tampered/expired/replayed grants, concurrent execution, durable daily caps, recipient and product swaps, ten injection strings, precise money arithmetic, ambiguous writes, status integrity, secret redaction, memo/pool/confirmation checks and entitlement replay. All fixtures are explicit test doubles. Real testnet evidence lives separately in `docs/evidence/`.
+
+Current verification passed **376 automated tests** and **23 fixture browser checks**. The live x402 HTTP payment is recorded separately in [its receipt](docs/evidence/x402-testnet-payment.json); fixture success is not presented as a live settlement.
 
 The dashboard was also checked with Playwright on desktop and mobile: no JavaScript errors, no horizontal overflow, token entry works, and unconfigured actions remain disabled. See [docs/demo-guide.md](docs/demo-guide.md) for the walkthrough.
 
@@ -387,6 +421,7 @@ Verify that the watch-only service is running on the configured loopback `/graph
 - The application is a single-operator local demo. Public deployment needs normal user sessions, ownership enforcement, process isolation, hardened transport, reorg handling, and retention controls.
 - External agents supply their own model. The broader TypeScript planner and production architecture remain future work.
 - The protected resource uses worthless public-testnet TAZ. It does not settle a Bitrefill invoice.
+- External x402 payments support only GET, v2 `exact`, EIP-3009 USDC on Base Sepolia. Mainnet, arbitrary API methods, automatic payment wrappers and Bitrefill x402 settlement are out of scope. One public-demo HTTP payment is verified; this is not a general production-readiness claim.
 - Missing authoritative invoice terms block payment links. Current provider responses must be verified before that parser is relaxed.
 - Target-user research and final event submission remain unverified. Temporary deployment checks, recorded payments and the exported demo video have evidence; Bitrefill purchase/delivery verification remains pending.
 
@@ -395,10 +430,12 @@ Verify that the watch-only service is running on the configured loopback `/graph
 - [x] Implement deterministic policies, exact owner approval, and signed single-use grants.
 - [x] Add encrypted persistence and independent shielded testnet payment verification.
 - [x] Separate domain, application, infrastructure, and presentation layers.
+- [x] Add an opt-in, owner-approved external x402 payment guard with a shared USD budget, fixture checks and a verified public-testnet payment.
 
 ### Next 30 days and submission
 
 - Complete a credential-backed Bitrefill invoice/delivery run and record its real invoice ID here. The [demo video](docs/assets/pegasus-pitch-demo.mp4) is exported; no delivered Bitrefill purchase is claimed.
+- Extend the verified x402 public-demo run to a real target API and review its custody, result handling and reconciliation requirements before broader use.
 - Validate missing invoice fields with the Bitrefill team before relaxing a fail-closed parser.
 - Run the UI with an actual target user and record their own feedback. No user demand evidence has been invented.
 - Extract the reusable memo/confirmation verifier and spend gateway after review. No upstream issue, PR or partner outreach has been created in this session.
@@ -418,6 +455,7 @@ For this event, finalize and submit on [Stadium](https://stadium.joinwebzero.com
 | [Demo guide](docs/demo-guide.md) | Commerce review, private-resource checkout, and honest demo states. |
 | [Demo video](docs/demo-video.md) | Verified MP4, editable preview, production timing, real footage and evidence limits. |
 | [Zcash testnet](docs/zcash-testnet.md) | Wallet setup, faucet, actual sends, and receiving-wallet verification. |
+| [x402 payments](docs/x402-payments.md) | Optional external API setup, exact approval, shared caps, custody and uncertain outcomes. |
 | [Deployment](docs/deployment.md) | Temporary HTTPS demo, service controls, trust boundaries, and live verification. |
 | [Environment reference](.env.example) | Required credentials, optional integrations, and default limits. |
 | [Project specification](docs/project-specification.md) | Original design, priorities, and planned production architecture. |

@@ -2,19 +2,22 @@
 
 const $ = (id) => document.getElementById(id);
 const tokenKeys = { owner: 'pegasus.owner', agent: 'pegasus.agent' };
-const progressKeys = { intent: 'pegasus.intent', order: 'pegasus.order', sent: 'pegasus.sent' };
+const progressKeys = { intent: 'pegasus.intent', order: 'pegasus.order', sent: 'pegasus.sent', x402: 'pegasus.x402.intent' };
 const state = {
   config: null, role: null, product: null, intent: null, grant: null, order: null, ownerReview: false,
+  x402Intent: null, x402Grant: null, x402OwnerReview: false,
   sent: {}, pendingSend: null, wallet: null, walletChecked: false, walletEstimate: null, nextActions: {},
 };
 let sessionGeneration = 0;
+let x402ViewGeneration = 0;
+let x402ActionPending = null;
 const labels = {
   AWAITING_APPROVAL: 'Awaiting approval', AUTHORIZED: 'Authorized', EXECUTING: 'Executing',
   UNCERTAIN: 'Uncertain · reconcile', BLOCKED: 'Blocked', UNPAID: 'Unpaid',
   PAYMENT_DETECTED: 'Payment detected', PAYMENT_CONFIRMED: 'Payment confirmed',
   PENDING_DELIVERY: 'Pending delivery', DELIVERED: 'Delivered', FAILED: 'Failed',
   EXPIRED: 'Expired', AWAITING_PAYMENT: 'Awaiting payment', CONFIRMED: 'Confirmed',
-  REDEEMED: 'Redeemed', PAYMENT_CONFLICT: 'Payment conflict',
+  REDEEMED: 'Redeemed', PAYMENT_CONFLICT: 'Payment conflict', SUCCEEDED: 'Succeeded',
 };
 const paidStatuses = ['PAYMENT_DETECTED', 'PAYMENT_CONFIRMED', 'PENDING_DELIVERY', 'DELIVERED'];
 const watchedInvoiceStatuses = ['UNPAID', 'PAYMENT_DETECTED', 'PAYMENT_CONFIRMED', 'PENDING_DELIVERY'];
@@ -77,7 +80,7 @@ function shortAddress(address) { return address.length > 20 ? `${address.slice(0
 function clock(seconds) { return new Date(typeof seconds === 'number' ? seconds * 1000 : seconds).toLocaleTimeString(); }
 function tag(status) {
   const el = node('span', labels[status] || status || 'Unknown', 'status-tag');
-  if (['DELIVERED', 'CONFIRMED', 'REDEEMED'].includes(status)) el.classList.add('success');
+  if (['DELIVERED', 'CONFIRMED', 'REDEEMED', 'SUCCEEDED'].includes(status)) el.classList.add('success');
   if (problemStatuses.includes(status)) el.classList.add('danger');
   return el;
 }
@@ -113,18 +116,23 @@ function remember(key, value) {
 }
 function clearSessionView() {
   sessionGeneration += 1;
+  x402ViewGeneration += 1;
   stopWatch('commerce');
   stopWatch('private');
-  Object.assign(state, { product: null, intent: null, grant: null, order: null, ownerReview: false, walletEstimate: null });
-  for (const id of ['objective', 'search-query', 'recipient', 'email', 'session-token']) $(id).value = '';
+  Object.assign(state, { product: null, intent: null, grant: null, order: null, ownerReview: false, walletEstimate: null,
+    x402Intent: null, x402Grant: null, x402OwnerReview: false });
+  for (const id of ['objective', 'search-query', 'recipient', 'email', 'session-token', 'x402-url']) $(id).value = '';
   for (const id of ['product-name', 'product-id', 'intent-digest', 'intent-expiry', 'invoice-note', 'commerce-watch',
-    'private-watch', 'copy-address', 'copy-amount', 'copy-memo', 'private-content']) $(id).textContent = '';
+    'private-watch', 'copy-address', 'copy-amount', 'copy-memo', 'private-content', 'x402-digest', 'x402-expiry',
+    'x402-challenge', 'x402-note', 'x402-result']) $(id).textContent = '';
   $('intent-digest').removeAttribute('title');
+  $('x402-digest').removeAttribute('title');
   for (const id of ['package', 'payment-method', 'intent-terms', 'private-terms', 'pay-summary', 'audit-events',
-    'history-body', 'search-results']) $(id).replaceChildren();
+    'history-body', 'search-results', 'x402-terms', 'x402-settlement-terms', 'x402-audit', 'x402-history']) $(id).replaceChildren();
   for (const id of ['proposal-form', 'intent-review', 'private-order', 'private-content', 'private-redeem',
-    'private-explorer', 'noir-send', 'other-wallet', 'wallet-funds', 'wallet-faucet', 'audit-events']) $(id).hidden = true;
-  $('review-empty').hidden = $('private-empty').hidden = false;
+    'private-explorer', 'noir-send', 'other-wallet', 'wallet-funds', 'wallet-faucet', 'audit-events', 'x402-review',
+    'x402-result-panel', 'x402-audit', 'x402-approve', 'x402-execute', 'x402-new']) $(id).hidden = true;
+  $('review-empty').hidden = $('private-empty').hidden = $('x402-empty').hidden = false;
   for (const id of ['payment-link', 'zcash-uri', 'private-explorer']) {
     $(id).hidden = true;
     $(id).removeAttribute('href');
@@ -149,8 +157,8 @@ async function roleFor(token) {
 function updateSession() {
   state.role = storedToken('owner') ? 'owner' : storedToken('agent') ? 'agent' : null;
   const copy = {
-    owner: ['Signed in as owner', 'You can search, prepare and approve purchases, and use the private checkout.', 'Use this token'],
-    agent: ['Signed in as agent', 'You can search and prepare purchases and use the private checkout. Add the owner token to approve.', 'Add token'],
+    owner: ['Signed in as owner', 'You can prepare and approve exact purchases and API payments, and use the private checkout.', 'Use this token'],
+    agent: ['Signed in as agent', 'You can prepare purchases and API payments, and use private checkout. Add the owner token to approve.', 'Add token'],
   }[state.role] || ['Sign in to Pegasus', 'Paste an access token from your local configuration. The gateway tells you what it allows.', 'Sign in'];
   [$('session-title').textContent, $('session-status').textContent, $('session-submit').textContent] = copy;
   $('clear-session').hidden = !state.role;
@@ -195,6 +203,7 @@ async function signIn() {
   updateSession();
   notice(role === 'owner' ? 'Signed in as owner. You can search, prepare and approve exact purchases.' : 'Signed in as agent. You can search and prepare purchases; approval needs the owner token.', 'success');
   await loadHistory().catch((error) => notice(error.message, 'error'));
+  await loadX402History().catch((error) => notice(error.message, 'error'));
   await restoreProgress();
 }
 function signOut() {
@@ -203,6 +212,7 @@ function signOut() {
   $('session-dialog').close();
   updateSession();
   loadHistory();
+  loadX402History();
   notice('Signed out. Your tokens were removed from this tab.');
 }
 async function restoreSession() {
@@ -220,7 +230,7 @@ async function restoreSession() {
   }
   updateSession();
   if (!state.role) return;
-  try { await loadHistory(); } catch { /* History stays empty until the next refresh. */ }
+  try { await loadHistory(); await loadX402History(); } catch { /* History stays empty until the next refresh. */ }
   await restoreProgress();
 }
 
@@ -408,19 +418,21 @@ function renderPrivateFlow() {
 function renderWorkflows() {
   renderCommerceFlow();
   renderPrivateFlow();
+  renderX402Flow();
 }
 
 function switchTab(name, updateHash = true) {
-  for (const key of ['commerce', 'private']) {
+  for (const key of ['commerce', 'private', 'x402']) {
     const selected = key === name;
     $(`${key}-tab`).classList.toggle('selected', selected);
     $(`${key}-tab`).setAttribute('aria-selected', String(selected));
     $(`${key}-panel`).hidden = !selected;
   }
-  $('breadcrumb-current').textContent = name === 'commerce' ? 'Commerce' : 'Private resource';
+  $('breadcrumb-current').textContent = { commerce: 'Commerce', private: 'Private resource', x402: 'API payments' }[name];
   window.pegasusVisuals?.setZone(name);
-  if (updateHash) history.replaceState(null, '', name === 'private' ? '#private' : location.pathname);
+  if (updateHash) history.replaceState(null, '', name === 'commerce' ? location.pathname : `#${name}`);
   clearNotice();
+  if (name === 'x402') loadX402History().catch((error) => notice(error.message, 'error'));
 }
 async function loadConfig() {
   try {
@@ -438,6 +450,7 @@ async function loadConfig() {
     $('zcash-status').textContent = c.zcash_configured ? 'Receiving wallet configured. Testnet only.' : 'The local testnet receiving wallet is not configured.';
     block('create-private-order', !c.zcash_configured);
     $('intent-cap').value = Number.isSafeInteger(c.caps?.per_purchase_minor) ? (c.caps.per_purchase_minor / 100).toFixed(2) : '';
+    renderX402Config();
     if (c.allowed_countries?.length) {
       $('country').replaceChildren(...c.allowed_countries.map((code) => node('option', code)));
     }
@@ -448,6 +461,7 @@ async function loadConfig() {
     $('commerce-status-note').textContent = 'Cannot read server configuration';
     block('search-button', true);
     block('create-private-order', true);
+    $('x402-config-status').textContent = 'API payments unavailable: gateway configuration could not be read.';
     notice(`${error.message} Reload the page once the gateway is running.`, 'error');
   }
   renderWorkflows();
@@ -719,6 +733,266 @@ async function loadAudit(id) {
   });
 }
 
+// External APIs: unsigned discovery, exact owner approval, and one gateway payment attempt.
+function x402Enabled() {
+  return state.config?.x402?.configured === true && state.config.x402.network === 'eip155:84532';
+}
+function x402Verified(intent) {
+  return intent?.status === 'SUCCEEDED' && intent.settlement?.verified === true
+    && intent.settlement?.authorization_verified === true;
+}
+function x402Unresolved(intent) {
+  return ['UNCERTAIN', 'EXECUTING'].includes(intent?.status)
+    || (intent?.status === 'SUCCEEDED' && !x402Verified(intent));
+}
+function x402Amount(value) {
+  if (typeof value !== 'string' || !/^\d+$/.test(value)) return 'Not verified';
+  const atomic = BigInt(value);
+  const whole = atomic / 1000000n;
+  const fraction = String(atomic % 1000000n).padStart(6, '0').replace(/0+$/, '');
+  return `${whole}${fraction ? `.${fraction}` : ''} USDC (${value} atomic units)`;
+}
+function renderX402Config() {
+  const config = state.config?.x402;
+  $('x402-config-status').textContent = x402Enabled()
+    ? 'Configured for Base Sepolia testnet USDC. Every payment needs exact owner approval.'
+    : 'Disabled. The operator must configure an allowed Base Sepolia API and testnet signing authority first.';
+  const ceiling = state.config?.caps?.per_purchase_minor;
+  if (Number.isSafeInteger(ceiling)) {
+    $('x402-cap').max = String(ceiling);
+    if (!$('x402-cap').value) $('x402-cap').value = String(ceiling);
+  }
+  terms('x402-policy-terms', [
+    ['Network', config?.network || 'Not configured'], ['USDC token', config?.asset || 'Not configured'],
+    ['Allowed origins', Array.isArray(config?.allowed_origins) ? config.allowed_origins.join(', ') || 'None' : 'None'],
+    ['Allowed payees', Array.isArray(config?.allowed_payees) ? config.allowed_payees.join(', ') || 'None' : 'None'],
+    ['Shared daily cap', money(state.config?.caps?.per_day_minor)],
+  ]);
+}
+function renderX402Flow() {
+  const intent = state.x402Intent;
+  const status = intent?.status;
+  const uncertain = x402Unresolved(intent);
+  const busy = Boolean(x402ActionPending);
+  $('x402-fields').disabled = !x402Enabled() || busy || uncertain;
+  block('x402-propose', !x402Enabled() || busy || uncertain);
+  block('x402-approve', busy || state.role !== 'owner');
+  block('x402-execute', busy || !state.x402Grant || status !== 'AUTHORIZED');
+  block('x402-reload', busy);
+  $('x402-new').hidden = !intent || uncertain || busy;
+  const approved = ['AUTHORIZED', 'EXECUTING', 'SUCCEEDED', 'UNCERTAIN'].includes(status);
+  const attempted = ['EXECUTING', 'SUCCEEDED', 'UNCERTAIN'].includes(status);
+  markSteps('x402-steps', [Boolean(state.role), Boolean(intent), approved, attempted, x402Verified(intent)], uncertain);
+  if (!state.config) return setNext('x402', 'Waiting for gateway configuration.');
+  if (!x402Enabled()) return setNext('x402', 'External API payments are disabled. No payment can be attempted here.');
+  if (x402ActionPending === 'execute' || status === 'EXECUTING') return setNext('x402', 'One payment attempt is in progress. No outcome is assumed and it will not be retried.');
+  if (busy) return setNext('x402', 'Waiting for the gateway. No payment is sent while a challenge or approval is being read.');
+  if (!state.role) return setNext('x402', 'Sign in before reading an allowed API payment challenge.', 'Sign in', () => showSession());
+  if (uncertain) return setNext('x402', 'The payment outcome is uncertain. Read the saved status and reconcile with the operator; do not retry.', 'Read saved status', reloadX402Intent);
+  if (!intent) return setNext('x402', 'Enter an allowed API URL and a ceiling in USD cents. Discovery reads an unsigned challenge.', 'Enter API URL', () => focusOn('x402-url'));
+  if (status === 'AWAITING_APPROVAL') return state.role === 'owner'
+    ? setNext('x402', 'Review the exact URL, network, token, payee, amount and ceiling before approving.', 'Review API terms', () => focusOn('x402-approve'))
+    : setNext('x402', 'Only the separate owner credential can approve these exact API payment terms.', 'Sign in as owner', () => showSession('Approving an API payment needs the owner token.'));
+  if (status === 'AUTHORIZED') return state.x402Grant
+    ? setNext('x402', 'One exact request is approved. The gateway rechecks the challenge before signing once.', 'Review payment attempt', () => focusOn('x402-execute'))
+    : setNext('x402', 'The saved approval has no grant in this page memory. Reconcile with the operator or the originating client; no payment is retried.');
+  if (x402Verified(intent)) return setNext('x402', 'The gateway verified mined settlement and returned the API result. This intent cannot pay again.');
+  return setNext('x402', 'No independently verified API result is available. Read the saved status or reconcile with the operator.');
+}
+function renderX402Intent(intent) {
+  if (!state.role) return;
+  const previous = state.x402Intent;
+  if (previous && (previous.id !== intent.id || previous.digest !== intent.digest)) state.x402Grant = null;
+  state.x402Intent = intent;
+  state.x402OwnerReview = state.role === 'owner';
+  remember(progressKeys.x402, intent.id);
+  $('x402-empty').hidden = true;
+  $('x402-review').hidden = false;
+  setStatus('x402-status', intent.status === 'SUCCEEDED' && !x402Verified(intent) ? 'UNCERTAIN' : intent.status);
+  const action = intent.action || {};
+  let origin = 'Not verified';
+  try { origin = new URL(action.url).origin; } catch { /* Display only; the gateway validates destinations. */ }
+  const resource = action.resource;
+  terms('x402-terms', [
+    ['Request URL', action.url], ['Origin', origin], ['Method', action.method],
+    ['Resource', typeof resource === 'string' ? resource : resource?.description || resource?.url],
+    ['Scheme', action.scheme], ['Network', action.network], ['USDC token', action.asset],
+    ['Payee', action.pay_to], ['Exact payment', x402Amount(action.amount_atomic)],
+    ['Your approved ceiling', money(action.max_total_minor, action.currency)],
+    ['Payment timeout', Number.isSafeInteger(action.max_timeout_seconds) ? `${action.max_timeout_seconds} seconds` : null],
+  ]);
+  $('x402-digest').textContent = intent.digest || 'Unavailable';
+  $('x402-digest').title = intent.digest || '';
+  $('x402-expiry').textContent = intent.expires_at ? `Quote expires ${clock(intent.expires_at)}. Approval binds the exact fingerprint above.` : 'Approval binds this exact request.';
+  $('x402-challenge').textContent = JSON.stringify({ resource: action.resource, payment_requirements: action.payment_requirements }, null, 2);
+  $('x402-approve').hidden = intent.status !== 'AWAITING_APPROVAL' || state.role !== 'owner';
+  $('x402-execute').hidden = intent.status !== 'AUTHORIZED' || !state.x402Grant;
+  const notes = {
+    AWAITING_APPROVAL: 'Discovery was unsigned. No payment has been authorized or sent.',
+    AUTHORIZED: state.x402Grant ? 'One execution is approved. Signing authority remains in the trusted gateway.' : 'The grant is not available in this page memory. Do not assume a second approval or retry.',
+    EXECUTING: 'One execution is in progress. A transport response alone is not settlement evidence.',
+    UNCERTAIN: 'The outcome is uncertain. The attempt and its budget reservation remain consumed. Reconcile manually; do not retry.',
+    SUCCEEDED: x402Verified(intent) ? 'The gateway independently verified the mined transfer and its matching payment authorization.' : 'The reported result lacks complete settlement verification. Reconcile with the operator; the result is withheld.',
+  };
+  $('x402-note').textContent = notes[intent.status] || 'Read the saved status before taking further action.';
+  if (intent.reason) $('x402-note').textContent += ` Reason: ${intent.reason}`;
+  $('x402-result-panel').hidden = true;
+  $('x402-result').textContent = '';
+  $('x402-settlement-terms').replaceChildren();
+  if (x402Verified(intent)) {
+    const settlement = intent.settlement;
+    terms('x402-settlement-terms', [
+      ['Network', settlement.network], ['Transaction', settlement.transaction], ['Payer', settlement.payer],
+      ['Payee', settlement.pay_to], ['Exact payment', x402Amount(settlement.amount_atomic)],
+      ['Mined block', settlement.block_number], ['Verification', 'Mined transfer and matching authorization verified'],
+      ['Content type', intent.result?.content_type],
+    ]);
+    const body = intent.result && Object.hasOwn(intent.result, 'body') ? intent.result.body : intent.result;
+    $('x402-result').textContent = typeof body === 'string' ? body : JSON.stringify(body, null, 2) ?? 'The API returned no result body.';
+    $('x402-result-panel').hidden = false;
+  }
+  renderWorkflows();
+}
+function requireX402Idle() {
+  if (!x402Enabled()) throw new Error('External API payments are disabled on this gateway.');
+  if (x402ActionPending) throw new Error('An API payment operation is already in progress. No second attempt is started.');
+}
+async function proposeX402() {
+  requireX402Idle();
+  if (x402Unresolved(state.x402Intent)) throw new Error('Reconcile the current payment outcome before preparing another request.');
+  if (!$('x402-form').reportValidity()) throw new Error('Enter an allowed HTTPS URL and a positive integer ceiling in USD cents.');
+  const maximum = Number($('x402-cap').value);
+  if (!Number.isSafeInteger(maximum) || maximum <= 0) throw new Error('The ceiling must be a positive whole number of USD cents.');
+  const view = ++x402ViewGeneration;
+  x402ActionPending = 'propose';
+  renderX402Flow();
+  try {
+    const intent = await api('/api/x402/intents', { method: 'POST', body: { url: $('x402-url').value.trim(), max_total_minor: maximum } });
+    if (view !== x402ViewGeneration) return;
+    state.x402Grant = null;
+    renderX402Intent(intent);
+    focusOn('x402-review-title');
+    await loadX402History();
+  } finally { x402ActionPending = null; renderX402Flow(); }
+}
+async function approveX402() {
+  requireX402Idle();
+  if (state.role !== 'owner') {
+    showSession('Approving an API payment needs the separate owner token.');
+    throw new Error('Only the owner can approve an API payment.');
+  }
+  const previous = state.x402Intent;
+  if (!previous || previous.status !== 'AWAITING_APPROVAL') throw new Error('Read and review a fresh API payment challenge first.');
+  const reviewed = state.x402OwnerReview;
+  const view = x402ViewGeneration;
+  x402ActionPending = 'approve';
+  renderX402Flow();
+  try {
+    const fresh = await api(`/api/x402/intents/${encodeURIComponent(previous.id)}`, { owner: true });
+    if (view !== x402ViewGeneration || state.x402Intent?.id !== previous.id) return;
+    renderX402Intent(fresh);
+    if (!reviewed || previous.digest !== fresh.digest || JSON.stringify(previous.action) !== JSON.stringify(fresh.action)) {
+      notice('The exact API terms changed. Review the current terms and click approve again.');
+      return;
+    }
+    const approval = await api(`/api/x402/intents/${encodeURIComponent(previous.id)}/approve`, { method: 'POST', owner: true, body: { digest: fresh.digest } });
+    if (view !== x402ViewGeneration || state.x402Intent?.id !== previous.id) return;
+    state.x402Grant = approval.grant;
+    renderX402Intent(approval.intent || { ...fresh, status: 'AUTHORIZED' });
+    notice('One exact API request is approved. No payment has been sent yet.', 'success');
+  } finally { x402ActionPending = null; renderX402Flow(); }
+}
+async function executeX402() {
+  requireX402Idle();
+  const previous = state.x402Intent;
+  if (!previous || previous.status !== 'AUTHORIZED' || !state.x402Grant) throw new Error('A fresh exact owner approval and its single-use grant are required.');
+  const view = x402ViewGeneration;
+  const generation = sessionGeneration;
+  const grant = state.x402Grant;
+  state.x402Grant = null;
+  x402ActionPending = 'execute';
+  renderX402Intent({ ...previous, status: 'EXECUTING', result: null, settlement: null });
+  try {
+    const result = await api(`/api/x402/intents/${encodeURIComponent(previous.id)}/execute`, { method: 'POST', body: { grant } });
+    if (view !== x402ViewGeneration || state.x402Intent?.id !== previous.id) return;
+    renderX402Intent(result);
+    notice(result.status === 'SUCCEEDED' && x402Verified(result) ? 'The API result is available after independently verified settlement.' : 'No verified outcome is assumed. Read the saved status and reconcile; do not retry.', result.status === 'SUCCEEDED' && x402Verified(result) ? 'success' : 'error');
+  } catch {
+    if (generation === sessionGeneration && view === x402ViewGeneration && state.x402Intent?.id === previous.id) {
+      renderX402Intent({ ...previous, status: 'UNCERTAIN', result: null, settlement: null, reason: 'EXECUTION_RESPONSE_UNAVAILABLE' });
+      notice('The execution response is unavailable. Reconcile the payment outcome with the operator; do not retry.', 'error');
+    }
+  } finally { x402ActionPending = null; renderX402Flow(); }
+  if (generation === sessionGeneration && view === x402ViewGeneration && state.x402Intent?.id === previous.id) {
+    // A secondary read failure cannot erase an already observed execution result.
+    await loadX402History().catch(() => {});
+    await loadX402Audit(previous.id).catch(() => {});
+  }
+}
+async function selectX402Intent(id) {
+  if (x402ActionPending) throw new Error('Wait for the current API payment operation before changing the viewed intent.');
+  const view = ++x402ViewGeneration;
+  const intent = await api(`/api/x402/intents/${encodeURIComponent(id)}`);
+  if (view !== x402ViewGeneration) return;
+  state.x402Grant = null;
+  renderX402Intent(intent);
+  await loadX402Audit(id);
+}
+async function reloadX402Intent() {
+  if (!state.x402Intent) return;
+  const id = state.x402Intent.id;
+  const view = x402ViewGeneration;
+  const intent = await api(`/api/x402/intents/${encodeURIComponent(id)}`);
+  if (view !== x402ViewGeneration || state.x402Intent?.id !== id) return;
+  renderX402Intent(intent);
+  await loadX402Audit(id);
+}
+function newX402Intent() {
+  if (x402ActionPending || x402Unresolved(state.x402Intent)) {
+    notice('Reconcile the current API payment outcome before preparing another request.', 'error');
+    return;
+  }
+  x402ViewGeneration += 1;
+  state.x402Intent = state.x402Grant = null;
+  state.x402OwnerReview = false;
+  remember(progressKeys.x402, null);
+  for (const id of ['x402-terms', 'x402-settlement-terms', 'x402-audit']) $(id).replaceChildren();
+  for (const id of ['x402-digest', 'x402-expiry', 'x402-challenge', 'x402-note', 'x402-result']) $(id).textContent = '';
+  $('x402-digest').removeAttribute('title');
+  for (const id of ['x402-review', 'x402-result-panel', 'x402-audit']) $(id).hidden = true;
+  $('x402-empty').hidden = false;
+  $('x402-url').value = '';
+  renderX402Flow();
+  focusOn('x402-url');
+}
+async function loadX402History() {
+  $('x402-history').replaceChildren();
+  if (!state.role) { $('x402-history').append(node('p', 'Sign in to see your API payment intents.', 'muted')); return; }
+  if (!x402Enabled()) { $('x402-history').append(node('p', 'API payments are disabled on this gateway.', 'muted')); return; }
+  const result = await api('/api/x402/intents');
+  if (!result.intents?.length) $('x402-history').append(node('p', 'No API payment intents yet. Start by reading an unsigned challenge.', 'muted'));
+  for (const intent of result.intents || []) {
+    const button = node('button', null, 'x402-history-item');
+    button.type = 'button';
+    const copy = node('span', intent.action?.url || intent.id);
+    copy.append(node('small', intent.id));
+    button.append(copy, tag(intent.status));
+    button.addEventListener('click', () => run(button, () => selectX402Intent(intent.id)));
+    $('x402-history').append(button);
+  }
+}
+async function loadX402Audit(id) {
+  const result = await api(`/api/x402/intents/${encodeURIComponent(id)}/audit`);
+  if (state.x402Intent?.id !== id) return;
+  $('x402-audit').replaceChildren();
+  $('x402-audit').hidden = !result.events?.length;
+  for (const event of result.events || []) {
+    const row = node('div', null, 'audit-event');
+    row.append(node('time', event.occurred_at ? clock(event.occurred_at) : ''), node('strong', event.action), node('span', event.reason || event.reason_code));
+    $('x402-audit').append(row);
+  }
+}
+
 // Wallet: the user's own Noir testnet extension. Pegasus never holds keys or signs payments.
 const testnetAddress = (value) => typeof value === 'string' && /^(utest1|ztestsapling)/.test(value);
 function noir() { return window.noirwallet?.zcash || null; }
@@ -965,7 +1239,14 @@ async function restoreProgress() {
       if (generation === sessionGeneration) { state.order = null; remember(progressKeys.order, null); }
     }
   }
+  if (generation !== sessionGeneration || !state.role) return;
+  const x402Id = sessionStorage.getItem(progressKeys.x402);
+  if (x402Id && !state.x402Intent && x402Enabled()) {
+    try { await selectX402Intent(x402Id); }
+    catch { if (generation === sessionGeneration) remember(progressKeys.x402, null); }
+  }
 }
+
 async function copyValue(id, button) {
   const text = $(id).textContent;
   try {
@@ -986,7 +1267,9 @@ try { state.sent = JSON.parse(sessionStorage.getItem(progressKeys.sent) || '{}')
 catch { state.sent = {}; }
 $('commerce-tab').addEventListener('click', () => switchTab('commerce'));
 $('private-tab').addEventListener('click', () => switchTab('private'));
-window.addEventListener('hashchange', () => switchTab(location.hash === '#private' ? 'private' : 'commerce', false));
+$('x402-tab').addEventListener('click', () => switchTab('x402'));
+const tabFromHash = () => ({ '#private': 'private', '#x402': 'x402' }[location.hash] || 'commerce');
+window.addEventListener('hashchange', () => switchTab(tabFromHash(), false));
 $('topbar-session').addEventListener('click', () => showSession());
 $('session-close').addEventListener('click', () => $('session-dialog').close());
 $('session-dialog').addEventListener('close', () => revealToken(false));
@@ -1001,6 +1284,7 @@ $('session-form').addEventListener('submit', (event) => {
 $('clear-session').addEventListener('click', signOut);
 $('commerce-next-action').addEventListener('click', (event) => run(event.currentTarget, () => state.nextActions.commerce?.()));
 $('private-next-action').addEventListener('click', (event) => run(event.currentTarget, () => state.nextActions.private?.()));
+$('x402-next-action').addEventListener('click', (event) => run(event.currentTarget, () => state.nextActions.x402?.()));
 $('search-form').addEventListener('submit', (event) => { event.preventDefault(); run('search-button', search); });
 $('proposal-form').addEventListener('submit', (event) => { event.preventDefault(); run(event.submitter, propose); });
 $('approve-button').addEventListener('click', () => run('approve-button', approve));
@@ -1013,8 +1297,14 @@ $('wallet-connect').addEventListener('click', () => run('wallet-connect', () => 
 $('noir-send').addEventListener('click', () => run('noir-send', sendNoir));
 $('private-refresh').addEventListener('click', () => run('private-refresh', () => refreshPrivate()));
 $('private-redeem').addEventListener('click', () => run('private-redeem', redeem));
+$('x402-form').addEventListener('submit', (event) => { event.preventDefault(); run('x402-propose', proposeX402); });
+$('x402-approve').addEventListener('click', () => run('x402-approve', approveX402));
+$('x402-execute').addEventListener('click', () => run('x402-execute', executeX402));
+$('x402-reload').addEventListener('click', () => run('x402-reload', reloadX402Intent));
+$('x402-new').addEventListener('click', newX402Intent);
+$('x402-history-refresh').addEventListener('click', () => run('x402-history-refresh', loadX402History));
 document.querySelectorAll('[data-copy]').forEach((button) => button.addEventListener('click', () => copyValue(button.dataset.copy, button)));
-switchTab(location.hash === '#private' ? 'private' : 'commerce', false);
+switchTab(tabFromHash(), false);
 tickClock();
 setInterval(tickClock, 1000);
 updateSession();

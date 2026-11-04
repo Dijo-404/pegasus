@@ -27,3 +27,8 @@ class PurchaseApprovalRequest(EmptyRequest):
 
 class PurchaseExecutionRequest(EmptyRequest):
     grant: str = Field(min_length=10, max_length=8192)
+
+
+class ApiPaymentProposalRequest(EmptyRequest):
+    url: str = Field(min_length=8, max_length=2048)
+    max_total_minor: int = Field(gt=0, le=100000)

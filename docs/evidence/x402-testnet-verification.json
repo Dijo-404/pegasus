@@ -1,0 +1,73 @@
+{
+  "verified_at": "2026-11-04T17:14:06.303624+00:00",
+  "payment_receipt": "x402-testnet-payment.json",
+  "network": "eip155:84532",
+  "transaction": "0x8f144b1a9880cc15eb7e0ad1364b4947973c68cf35b2a73dbb1f1ec77e81c86d",
+  "independent_rpc_receipt": {
+    "verified_at": "2026-11-04T17:10:50.000845+00:00",
+    "rpc": "https://base-sepolia-rpc.publicnode.com",
+    "network": "eip155:84532",
+    "transaction": "0x8f144b1a9880cc15eb7e0ad1364b4947973c68cf35b2a73dbb1f1ec77e81c86d",
+    "block_number": 54451642,
+    "status": 1,
+    "usdc_logs": [
+      {
+        "address": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+        "topics": [
+          "0x98de503528ee59b575ef0c0a2576a82497bfc029a5685b209e9ec333479b10a5",
+          "0x0000000000000000000000007430dcce185f06206b07695f89375ee9d55f8716",
+          "0x6b63cf4acf9eee7113becf0bde2fe94b3904d31158bee5d2c80ce3a6e0207030"
+        ],
+        "data": "0x",
+        "log_index": 0
+      },
+      {
+        "address": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+        "topics": [
+          "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+          "0x0000000000000000000000007430dcce185f06206b07695f89375ee9d55f8716",
+          "0x000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c"
+        ],
+        "data": "0x00000000000000000000000000000000000000000000000000000000000003e8",
+        "log_index": 1
+      }
+    ]
+  },
+  "persistence": {
+    "gateway_restarted": true,
+    "saved_status": "SUCCEEDED",
+    "settlement_unchanged": true,
+    "api_result_unchanged": true,
+    "reservation_count": 1,
+    "reserved_usd_cents": 1,
+    "reservation_day_timezone": "Asia/Kolkata",
+    "grant_count": 1,
+    "grant_consumed": true
+  },
+  "browser_saved_result": {
+    "actual_gateway": true,
+    "desktop": true,
+    "mobile_width": 390,
+    "no_horizontal_overflow": true,
+    "javascript_errors": [],
+    "additional_write_requests": 0,
+    "external_browser_requests": 0,
+    "payment_and_approval_actions_hidden": true
+  },
+  "automated_checks": {
+    "python_tests_passed": 376,
+    "fixture_browser_checks_passed": 23,
+    "ruff": "passed",
+    "javascript_syntax": "passed",
+    "lock_consistency": "passed",
+    "git_whitespace": "passed",
+    "existing_dependency_versions_unchanged": true,
+    "warning": "Existing Starlette TestClient/httpx deprecation warning"
+  },
+  "public_https_health_http_status": 200,
+  "limits": [
+    "One official public-demo API request, authorized and executed through loopback HTTP. Browser checks only read the saved result.",
+    "Transparent test-USDC settlement; configured public RPC is a trusted chain observer.",
+    "Bitrefill purchase and delivery remain pending. Historical Zcash receipts are separate evidence."
+  ]
+}

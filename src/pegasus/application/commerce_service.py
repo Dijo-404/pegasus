@@ -34,12 +34,16 @@ class CommerceService:
         return await self.provider.details(product_id)
 
     def get_intent(self, intent_id: str) -> dict:
-        return self.repository.intent(intent_id)
+        intent = self.repository.intent(intent_id)
+        if intent.get("kind", "commerce") != "commerce":
+            raise Denied("NOT_FOUND", "Commerce intent not found.")
+        return intent
 
     def list_intents(self) -> list[dict]:
-        return self.repository.list_intents()
+        return [value for value in self.repository.list_intents() if value.get("kind", "commerce") == "commerce"]
 
     def get_audit(self, intent_id: str) -> list[dict]:
+        self.get_intent(intent_id)
         return self.repository.audit(intent_id)
 
     async def propose(self, request: dict) -> dict:
@@ -59,8 +63,9 @@ class CommerceService:
         return intent
 
     def approve(self, intent_id: str, expected_digest: str) -> dict:
+        self.get_intent(intent_id)
         grant_id, expires = self.repository.approve(intent_id, expected_digest, self.policy.grant_ttl_seconds)
-        intent = self.repository.intent(intent_id)
+        intent = self.get_intent(intent_id)
         now = int(time.time())
         claims = {
             "v": 1,
@@ -88,7 +93,7 @@ class CommerceService:
 
     async def _execute(self, intent_id: str, token: str) -> dict:
         claims = self.grants.verify(token)
-        intent = self.repository.intent(intent_id)
+        intent = self.get_intent(intent_id)
         if (
             claims.get("intent_id") != intent_id
             or claims.get("digest") != intent["digest"]
@@ -126,7 +131,7 @@ class CommerceService:
         return intent
 
     async def refresh(self, intent_id: str) -> dict:
-        intent = self.repository.intent(intent_id)
+        intent = self.get_intent(intent_id)
         previous = intent["status"]
         invoice = intent.get("invoice")
         if not invoice:
